@@ -1,0 +1,28 @@
+# macOS metadata
+.DS_Store
+._*
+__MACOSX
+
+# Java compiled classes & JARs
+*.class
+*.jar
+pa1/Server/RMIInterface.jar
+pa1-students/Template/Server/RMIInterface.jar
+
+# Build / Output directories
+bin/
+target/
+out/
+build/
+
+# IDE directories
+.idea/
+*.iml
+.vscode/
+.settings/
+.project
+.classpath
+
+# Logs and temporary files
+*.log
+*.tmp
