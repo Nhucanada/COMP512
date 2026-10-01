@@ -135,18 +135,24 @@ def audit_rmi_configuration(checker):
         checker.check("RMI Group ID customized", True)
 
 def audit_bundle_implementation(checker):
-    rm_file = PA1_DIR / "Server" / "Server" / "Common" / "ResourceManager.java"
-    if not rm_file.exists():
-        checker.warn("ResourceManager.java check", "File not found")
-        return
+    mw_files = list(PA1_DIR.rglob("*Middleware*.java"))
+    mw_bundle_implemented = False
+    for mw in mw_files:
+        content = mw.read_text(errors="ignore")
+        if "boolean bundle(" in content and "rollbackStack" in content:
+            mw_bundle_implemented = True
+            break
 
-    content = rm_file.read_text(errors="ignore")
-    # Check if bundle returns false statically
-    m = re.search(r'public boolean bundle[^{]+{\s*return false;\s*}', content)
-    if m:
-        checker.warn("Bundle method implementation", "bundle() in ResourceManager currently returns static 'false'. Must implement bundle reservation logic in Middleware.")
+    if mw_bundle_implemented:
+        checker.check("Bundle method implemented with rollback in Middleware", True)
     else:
-        checker.check("Bundle method implemented beyond template stub", True)
+        rm_file = PA1_DIR / "Server" / "Server" / "Common" / "ResourceManager.java"
+        content = rm_file.read_text(errors="ignore") if rm_file.exists() else ""
+        m = re.search(r'public boolean bundle[^{]+{\s*return false;\s*}', content)
+        if m:
+            checker.warn("Bundle method implementation", "bundle() in ResourceManager currently returns static 'false'. Must implement bundle reservation logic in Middleware.")
+        else:
+            checker.check("Bundle method implemented beyond template stub", True)
 
 def audit_middleware_architecture(checker):
     # Check if Middleware classes exist

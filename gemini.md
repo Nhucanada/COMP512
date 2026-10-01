@@ -231,6 +231,9 @@ COMP 512/
 │   │   ├── run_server.sh               # Runs standalone ResourceManager instance
 │   │   ├── run_middleware.sh           # Runs Middleware instance connecting to backend RMs
 │   │   ├── run_servers.sh              # 5-node tmux/SSH cluster orchestration script
+│   │   ├── run_tcp_server.sh           # Runs standalone TCP ResourceManager instance
+│   │   ├── run_tcp_middleware.sh       # Runs non-blocking TCP Middleware instance
+│   │   ├── run_tcp_servers.sh          # 5-node tmux cluster launcher for TCP architecture
 │   │   └── Server/
 │   │       ├── Interface/
 │   │       │   └── IResourceManager.java # Core Remote interface defining 18 domain methods
@@ -245,15 +248,24 @@ COMP 512/
 │   │       │   ├── RMHashMap.java      # Synchronized hash map storage
 │   │       │   ├── ResourceManager.java# Base common implementation of IResourceManager
 │   │       │   └── Trace.java          # Diagnostic logging utility
-│   │       └── RMI/
-│   │           └── RMIResourceManager.java # RMI server bootstrap & registry binding
+│   │       ├── RMI/
+│   │       │   ├── RMIResourceManager.java # RMI server bootstrap & registry binding
+│   │       │   └── RMIMiddleware.java  # 3-tier RMI Middleware with Option C customer tracking
+│   │       └── TCP/
+│   │           ├── TCPMessage.java     # Generic RPC serializable request envelope
+│   │           ├── TCPResponse.java    # Generic RPC serializable response envelope
+│   │           ├── TCPProxy.java       # InvocationHandler client dynamic reflection proxy
+│   │           ├── TCPResourceManager.java # Multi-threaded concurrent TCP backend RM server
+│   │           └── TCPMiddleware.java  # Non-blocking multi-threaded TCP Middleware server
 │   ├── Client/                         # Client codebase (interactive CLI & automated scripts)
 │   │   ├── Makefile                    # Client build rules (depends on RMIInterface.jar)
-│   │   ├── run_client.sh               # Client launch script
+│   │   ├── run_client.sh               # RMI Client launch script
+│   │   ├── run_tcp_client.sh           # TCP Client launch script
 │   │   └── Client/
 │   │       ├── Client.java             # Abstract client with CLI loop & argument parser
 │   │       ├── Command.java            # Command enum & help message definitions
-│   │       └── RMIClient.java          # RMI client implementation connecting to registry
+│   │       ├── RMIClient.java          # RMI client implementation connecting to registry
+│   │       └── TCPClient.java          # TCP client implementation using dynamic proxy
 │   └── README.md                       # PA1 starter readme
 ├── pa1-students/                       # Legacy student distribution folder (preserved)
 ├── .agents/
@@ -265,7 +277,8 @@ COMP 512/
 │       │   └── scripts/
 │       │       ├── check_course_adherence.py # Verifies imports, thread safety, invariants
 │       │       ├── verify_pa1.py       # Baseline build & runtime verification harness
-│       │       └── test_edge_cases.py  # Domain logic & specification invariants audit
+│       │       ├── test_edge_cases.py  # Domain logic & specification invariants audit
+│       │       └── test_distributed_system.py # End-to-end RMI & TCP integration & concurrency test
 │       ├── submission-packager/        # Automated clean submission packager
 │       │   ├── SKILL.md                # Skill workflow & instructions
 │       │   └── scripts/
@@ -286,22 +299,22 @@ COMP 512/
 
 ### PA1 Grading & Feature Scope Matrix
 
-> **PA1 Baseline Status**: **Starter Template Restored & Verified**  
-> **Course Adherence Score**: **3 / 3 Core Checks Passing, 4 Progressive Warnings Flagged**  
-> (`check_course_adherence.py` [3/3] + `test_edge_cases.py` [5/5] + `verify_pa1.py` Build [2/2])
+> **PA1 Baseline Status**: **Full RMI & TCP Distributed Implementation Complete & Verified**  
+> **Course Adherence Score**: **7 / 7 Core Checks Passing, 0 Warnings**  
+> (`check_course_adherence.py` [7/7] + `test_edge_cases.py` [5/5] + `test_distributed_system.py` [18/18] + `verify_pa1.py` [3/3])
 
 | Component / Task | Category | Points | Status | Technical Details & Requirements |
 | :--- | :--- | :--- | :--- | :--- |
 | **Starter Code Syntax Fix** | Plumbing | — | 🟢 Completed | Removed illegal `\x03` control character at [`Client.java:380`](file:///Users/nathanhu/downloads/COMP%20512/pa1/Client/Client/Client.java#L380) enabling clean compile |
-| **3-Tier RMI Middleware** | Part 1.1 | 10 pts | 🟡 Planned | Implement `RMIMiddleware` implementing `IResourceManager`, binding to registry, routing to 3 RMs |
-| **3 Dedicated RMs** | Part 1.1 | 5 pts | 🟡 Planned | Standalone `Flights`, `Cars`, `Rooms` RMs running on separate ports/machines |
-| **Customer Strategy** | Part 1.1 | 5 pts | 🟡 Planned | Option C: Centralized customer tracking at Middleware (`newCustomer`, `deleteCustomer`, `queryCustomerInfo`) |
-| **Bundle Implementation** | Part 1.1 | 5 pts | 🟡 Planned | Multi-resource reservation with availability pre-check and rollback on failure |
-| **TCP Generic RPC Service** | Part 1.2 | 15 pts | ⚪ Planned | Mandatory AI rule: Generic `TCPMessage` wrapping envelope & dynamic client proxy for all methods |
-| **Non-blocking Middleware** | Part 1.2 | 20 pts | ⚪ Planned | Middleware does NOT block waiting for RM; continues accepting client requests concurrently |
-| **Concurrent RMs (TCP)** | Part 1.2 | 15 pts | ⚪ Planned | Multi-threaded socket listener & request handler on each backend RM |
-| **Technical Report** | Part 2 | 15 pts | ⚪ Planned | 3–5 pages: RMI & TCP design, message formats, concurrency, customer strategy, test cases, AI token audit |
-| **Live TA Demonstration** | Part 3 | 10 pts | ⚪ Planned | 5-machine deployment on Trottier nodes (`tr-open-*`), slide presentation, interactive CLI test cases |
+| **3-Tier RMI Middleware** | Part 1.1 | 10 pts | 🟢 Completed | [`RMIMiddleware.java`](file:///Users/nathanhu/downloads/COMP%20512/pa1/Server/Server/RMI/RMIMiddleware.java) implementing `IResourceManager`, binding to registry, routing to 3 RMs |
+| **3 Dedicated RMs** | Part 1.1 | 5 pts | 🟢 Completed | Standalone `Flights`, `Cars`, `Rooms` RMs running on separate ports/machines with group_21_ prefix |
+| **Customer Strategy** | Part 1.1 | 5 pts | 🟢 Completed | Option C: Centralized customer tracking at Middleware (`newCustomer`, cascading `deleteCustomer`, itemized `queryCustomerInfo`) |
+| **Bundle Implementation** | Part 1.1 | 5 pts | 🟢 Completed | Multi-resource reservation with availability pre-check and LIFO compensating rollback on partial failure |
+| **TCP Generic RPC Service** | Part 1.2 | 15 pts | 🟢 Completed | Generic [`TCPMessage.java`](file:///Users/nathanhu/downloads/COMP%20512/pa1/Server/Server/TCP/TCPMessage.java), [`TCPResponse.java`](file:///Users/nathanhu/downloads/COMP%20512/pa1/Server/Server/TCP/TCPResponse.java), & dynamic [`TCPProxy.java`](file:///Users/nathanhu/downloads/COMP%20512/pa1/Server/Server/TCP/TCPProxy.java) client proxy |
+| **Non-blocking Middleware** | Part 1.2 | 20 pts | 🟢 Completed | [`TCPMiddleware.java`](file:///Users/nathanhu/downloads/COMP%20512/pa1/Server/Server/TCP/TCPMiddleware.java): multi-threaded executor thread pool, dedicated sockets per call to eliminate stream corruption |
+| **Concurrent RMs (TCP)** | Part 1.2 | 15 pts | 🟢 Completed | [`TCPResourceManager.java`](file:///Users/nathanhu/downloads/COMP%20512/pa1/Server/Server/TCP/TCPResourceManager.java): multi-threaded request dispatch across cached thread pool |
+| **Technical Report** | Part 2 | 15 pts | 🟡 Planned | 3–5 pages: RMI & TCP design, message formats, concurrency, customer strategy, test cases, AI token audit |
+| **Live TA Demonstration** | Part 3 | 10 pts | 🟡 Planned | 5-machine deployment on Trottier nodes (`tr-open-*`), slide presentation, interactive CLI test cases |
 
 ---
 

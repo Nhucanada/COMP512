@@ -17,8 +17,8 @@ public class RMIClient extends Client
 	private static int s_serverPort = 1099;
 	private static String s_serverName = "Server";
 
-	//TODO: ADD YOUR GROUP NUMBER TO COMPILE
-	private static String s_rmiPrefix = "group_xx_";
+	// Group 21 RMI prefix
+	private static String s_rmiPrefix = "group_21_";
 
 	public static void main(String args[])
 	{	
@@ -32,7 +32,16 @@ public class RMIClient extends Client
 		}
 		if (args.length > 2)
 		{
-			System.err.println((char)27 + "[31;1mClient exception: " + (char)27 + "[0mUsage: java client.RMIClient [server_hostname [server_rmiobject]]");
+			try {
+				s_serverPort = Integer.parseInt(args[2]);
+			} catch (NumberFormatException e) {
+				System.err.println("Invalid port number: " + args[2]);
+				System.exit(1);
+			}
+		}
+		if (args.length > 3)
+		{
+			System.err.println((char)27 + "[31;1mClient exception: " + (char)27 + "[0mUsage: java client.RMIClient [server_hostname [server_rmiobject [server_port]]]");
 			System.exit(1);
 		}
 
