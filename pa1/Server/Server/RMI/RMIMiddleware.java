@@ -47,6 +47,10 @@ public class RMIMiddleware extends ResourceManager
 	public boolean addFlight(int flightNum, int flightSeats, int flightPrice) throws RemoteException
 	{
 		Trace.info("RMIMiddleware::addFlight(" + flightNum + ", " + flightSeats + ", $" + flightPrice + ") -> Flights RM");
+		if (flightNum <= 0 || flightSeats < 0) {
+			Trace.warn("RMIMiddleware::addFlight() failed: invalid flightNum <= 0 or negative seats < 0");
+			return false;
+		}
 		if (m_flightRM == null) {
 			throw new RemoteException("Flights RM not connected");
 		}
@@ -57,6 +61,10 @@ public class RMIMiddleware extends ResourceManager
 	public boolean deleteFlight(int flightNum) throws RemoteException
 	{
 		Trace.info("RMIMiddleware::deleteFlight(" + flightNum + ") -> Flights RM");
+		if (flightNum <= 0) {
+			Trace.warn("RMIMiddleware::deleteFlight() failed: invalid flightNum <= 0");
+			return false;
+		}
 		if (m_flightRM == null) {
 			throw new RemoteException("Flights RM not connected");
 		}
@@ -91,6 +99,10 @@ public class RMIMiddleware extends ResourceManager
 	public boolean addCars(String location, int count, int price) throws RemoteException
 	{
 		Trace.info("RMIMiddleware::addCars(" + location + ", " + count + ", $" + price + ") -> Cars RM");
+		if (location == null || location.trim().isEmpty() || count < 0) {
+			Trace.warn("RMIMiddleware::addCars() failed: invalid location or negative count < 0");
+			return false;
+		}
 		if (m_carRM == null) {
 			throw new RemoteException("Cars RM not connected");
 		}
@@ -101,6 +113,10 @@ public class RMIMiddleware extends ResourceManager
 	public boolean deleteCars(String location) throws RemoteException
 	{
 		Trace.info("RMIMiddleware::deleteCars(" + location + ") -> Cars RM");
+		if (location == null || location.trim().isEmpty()) {
+			Trace.warn("RMIMiddleware::deleteCars() failed: invalid location");
+			return false;
+		}
 		if (m_carRM == null) {
 			throw new RemoteException("Cars RM not connected");
 		}
@@ -135,6 +151,10 @@ public class RMIMiddleware extends ResourceManager
 	public boolean addRooms(String location, int count, int price) throws RemoteException
 	{
 		Trace.info("RMIMiddleware::addRooms(" + location + ", " + count + ", $" + price + ") -> Rooms RM");
+		if (location == null || location.trim().isEmpty() || count < 0) {
+			Trace.warn("RMIMiddleware::addRooms() failed: invalid location or negative count < 0");
+			return false;
+		}
 		if (m_roomRM == null) {
 			throw new RemoteException("Rooms RM not connected");
 		}
@@ -145,6 +165,10 @@ public class RMIMiddleware extends ResourceManager
 	public boolean deleteRooms(String location) throws RemoteException
 	{
 		Trace.info("RMIMiddleware::deleteRooms(" + location + ") -> Rooms RM");
+		if (location == null || location.trim().isEmpty()) {
+			Trace.warn("RMIMiddleware::deleteRooms() failed: invalid location");
+			return false;
+		}
 		if (m_roomRM == null) {
 			throw new RemoteException("Rooms RM not connected");
 		}
@@ -185,6 +209,10 @@ public class RMIMiddleware extends ResourceManager
 	@Override
 	public boolean newCustomer(int customerID) throws RemoteException
 	{
+		if (customerID <= 0) {
+			Trace.warn("RMIMiddleware::newCustomer(" + customerID + ") failed: customerID <= 0");
+			return false;
+		}
 		// Resolved locally on Middleware without network RPC
 		return super.newCustomer(customerID);
 	}
@@ -192,6 +220,10 @@ public class RMIMiddleware extends ResourceManager
 	@Override
 	public String queryCustomerInfo(int customerID) throws RemoteException
 	{
+		if (customerID <= 0) {
+			Trace.warn("RMIMiddleware::queryCustomerInfo(" + customerID + ") failed: customerID <= 0");
+			return "";
+		}
 		// Computed and formatted locally from Middleware Customer record
 		return super.queryCustomerInfo(customerID);
 	}
@@ -200,6 +232,10 @@ public class RMIMiddleware extends ResourceManager
 	public boolean deleteCustomer(int customerID) throws RemoteException
 	{
 		Trace.info("RMIMiddleware::deleteCustomer(" + customerID + ") called");
+		if (customerID <= 0) {
+			Trace.warn("RMIMiddleware::deleteCustomer(" + customerID + ") failed: customerID <= 0");
+			return false;
+		}
 		Customer customer = (Customer) readData(Customer.getKey(customerID));
 		if (customer == null)
 		{
@@ -249,6 +285,10 @@ public class RMIMiddleware extends ResourceManager
 	public boolean reserveFlight(int customerID, int flightNum) throws RemoteException
 	{
 		Trace.info("RMIMiddleware::reserveFlight(" + customerID + ", " + flightNum + ") called");
+		if (customerID <= 0 || flightNum <= 0) {
+			Trace.warn("RMIMiddleware::reserveFlight failed: invalid customerID <= 0 or flightNum <= 0");
+			return false;
+		}
 		Customer customer = (Customer) readData(Customer.getKey(customerID));
 		if (customer == null)
 		{
@@ -286,6 +326,10 @@ public class RMIMiddleware extends ResourceManager
 	public boolean reserveCar(int customerID, String location) throws RemoteException
 	{
 		Trace.info("RMIMiddleware::reserveCar(" + customerID + ", " + location + ") called");
+		if (customerID <= 0 || location == null || location.trim().isEmpty()) {
+			Trace.warn("RMIMiddleware::reserveCar failed: invalid customerID <= 0 or empty location");
+			return false;
+		}
 		Customer customer = (Customer) readData(Customer.getKey(customerID));
 		if (customer == null)
 		{
@@ -323,6 +367,10 @@ public class RMIMiddleware extends ResourceManager
 	public boolean reserveRoom(int customerID, String location) throws RemoteException
 	{
 		Trace.info("RMIMiddleware::reserveRoom(" + customerID + ", " + location + ") called");
+		if (customerID <= 0 || location == null || location.trim().isEmpty()) {
+			Trace.warn("RMIMiddleware::reserveRoom failed: invalid customerID <= 0 or empty location");
+			return false;
+		}
 		Customer customer = (Customer) readData(Customer.getKey(customerID));
 		if (customer == null)
 		{
@@ -370,6 +418,18 @@ public class RMIMiddleware extends ResourceManager
 	{
 		Trace.info("RMIMiddleware::bundle(" + customerID + ", flights=" + flightNumbers + ", loc=" + location + ", car=" + car + ", room=" + room + ") called");
 
+		if (customerID <= 0 || flightNumbers == null)
+		{
+			Trace.warn("RMIMiddleware::bundle failed--invalid customerID <= 0 or null flightNumbers");
+			return false;
+		}
+
+		if ((car || room) && (location == null || location.trim().isEmpty()))
+		{
+			Trace.warn("RMIMiddleware::bundle failed--car or room requested without location");
+			return false;
+		}
+
 		// Phase 1: Validate Customer Presence locally
 		Customer customer = (Customer) readData(Customer.getKey(customerID));
 		if (customer == null)
@@ -387,7 +447,18 @@ public class RMIMiddleware extends ResourceManager
 		Map<Integer, Integer> flightFrequencies = new HashMap<Integer, Integer>();
 		for (String flightStr : flightNumbers)
 		{
-			int fn = Integer.parseInt(flightStr);
+			int fn;
+			try {
+				fn = Integer.parseInt(flightStr);
+			} catch (NumberFormatException nfe) {
+				Trace.warn("RMIMiddleware::bundle aborting: non-integer flight number " + flightStr);
+				return false;
+			}
+			if (fn <= 0)
+			{
+				Trace.warn("RMIMiddleware::bundle aborting: invalid flight number <= 0: " + fn);
+				return false;
+			}
 			Integer count = flightFrequencies.get(fn);
 			flightFrequencies.put(fn, (count == null ? 1 : count + 1));
 		}

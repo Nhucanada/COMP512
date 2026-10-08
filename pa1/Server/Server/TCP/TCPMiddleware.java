@@ -69,6 +69,10 @@ public class TCPMiddleware extends ResourceManager
 	public boolean addFlight(int flightNum, int flightSeats, int flightPrice) throws RemoteException
 	{
 		Trace.info("TCPMiddleware::addFlight(" + flightNum + ", " + flightSeats + ", $" + flightPrice + ") -> Flights RM");
+		if (flightNum <= 0 || flightSeats < 0) {
+			Trace.warn("TCPMiddleware::addFlight() failed: invalid flightNum <= 0 or negative seats < 0");
+			return false;
+		}
 		if (m_flightRM == null) {
 			throw new RemoteException("Flights RM not connected");
 		}
@@ -79,6 +83,10 @@ public class TCPMiddleware extends ResourceManager
 	public boolean deleteFlight(int flightNum) throws RemoteException
 	{
 		Trace.info("TCPMiddleware::deleteFlight(" + flightNum + ") -> Flights RM");
+		if (flightNum <= 0) {
+			Trace.warn("TCPMiddleware::deleteFlight() failed: invalid flightNum <= 0");
+			return false;
+		}
 		if (m_flightRM == null) {
 			throw new RemoteException("Flights RM not connected");
 		}
@@ -113,6 +121,10 @@ public class TCPMiddleware extends ResourceManager
 	public boolean addCars(String location, int count, int price) throws RemoteException
 	{
 		Trace.info("TCPMiddleware::addCars(" + location + ", " + count + ", $" + price + ") -> Cars RM");
+		if (location == null || location.trim().isEmpty() || count < 0) {
+			Trace.warn("TCPMiddleware::addCars() failed: invalid location or negative count < 0");
+			return false;
+		}
 		if (m_carRM == null) {
 			throw new RemoteException("Cars RM not connected");
 		}
@@ -123,6 +135,10 @@ public class TCPMiddleware extends ResourceManager
 	public boolean deleteCars(String location) throws RemoteException
 	{
 		Trace.info("TCPMiddleware::deleteCars(" + location + ") -> Cars RM");
+		if (location == null || location.trim().isEmpty()) {
+			Trace.warn("TCPMiddleware::deleteCars() failed: invalid location");
+			return false;
+		}
 		if (m_carRM == null) {
 			throw new RemoteException("Cars RM not connected");
 		}
@@ -157,6 +173,10 @@ public class TCPMiddleware extends ResourceManager
 	public boolean addRooms(String location, int count, int price) throws RemoteException
 	{
 		Trace.info("TCPMiddleware::addRooms(" + location + ", " + count + ", $" + price + ") -> Rooms RM");
+		if (location == null || location.trim().isEmpty() || count < 0) {
+			Trace.warn("TCPMiddleware::addRooms() failed: invalid location or negative count < 0");
+			return false;
+		}
 		if (m_roomRM == null) {
 			throw new RemoteException("Rooms RM not connected");
 		}
@@ -167,6 +187,10 @@ public class TCPMiddleware extends ResourceManager
 	public boolean deleteRooms(String location) throws RemoteException
 	{
 		Trace.info("TCPMiddleware::deleteRooms(" + location + ") -> Rooms RM");
+		if (location == null || location.trim().isEmpty()) {
+			Trace.warn("TCPMiddleware::deleteRooms() failed: invalid location");
+			return false;
+		}
 		if (m_roomRM == null) {
 			throw new RemoteException("Rooms RM not connected");
 		}
@@ -206,12 +230,20 @@ public class TCPMiddleware extends ResourceManager
 	@Override
 	public boolean newCustomer(int customerID) throws RemoteException
 	{
+		if (customerID <= 0) {
+			Trace.warn("TCPMiddleware::newCustomer(" + customerID + ") failed: customerID <= 0");
+			return false;
+		}
 		return super.newCustomer(customerID);
 	}
 
 	@Override
 	public String queryCustomerInfo(int customerID) throws RemoteException
 	{
+		if (customerID <= 0) {
+			Trace.warn("TCPMiddleware::queryCustomerInfo(" + customerID + ") failed: customerID <= 0");
+			return "";
+		}
 		return super.queryCustomerInfo(customerID);
 	}
 
@@ -219,6 +251,10 @@ public class TCPMiddleware extends ResourceManager
 	public boolean deleteCustomer(int customerID) throws RemoteException
 	{
 		Trace.info("TCPMiddleware::deleteCustomer(" + customerID + ") called");
+		if (customerID <= 0) {
+			Trace.warn("TCPMiddleware::deleteCustomer(" + customerID + ") failed: customerID <= 0");
+			return false;
+		}
 		Customer customer = (Customer) readData(Customer.getKey(customerID));
 		if (customer == null)
 		{
@@ -268,6 +304,10 @@ public class TCPMiddleware extends ResourceManager
 	public boolean reserveFlight(int customerID, int flightNum) throws RemoteException
 	{
 		Trace.info("TCPMiddleware::reserveFlight(" + customerID + ", " + flightNum + ") called");
+		if (customerID <= 0 || flightNum <= 0) {
+			Trace.warn("TCPMiddleware::reserveFlight failed: invalid customerID <= 0 or flightNum <= 0");
+			return false;
+		}
 		Customer customer = (Customer) readData(Customer.getKey(customerID));
 		if (customer == null)
 		{
@@ -305,6 +345,10 @@ public class TCPMiddleware extends ResourceManager
 	public boolean reserveCar(int customerID, String location) throws RemoteException
 	{
 		Trace.info("TCPMiddleware::reserveCar(" + customerID + ", " + location + ") called");
+		if (customerID <= 0 || location == null || location.trim().isEmpty()) {
+			Trace.warn("TCPMiddleware::reserveCar failed: invalid customerID <= 0 or empty location");
+			return false;
+		}
 		Customer customer = (Customer) readData(Customer.getKey(customerID));
 		if (customer == null)
 		{
@@ -342,6 +386,10 @@ public class TCPMiddleware extends ResourceManager
 	public boolean reserveRoom(int customerID, String location) throws RemoteException
 	{
 		Trace.info("TCPMiddleware::reserveRoom(" + customerID + ", " + location + ") called");
+		if (customerID <= 0 || location == null || location.trim().isEmpty()) {
+			Trace.warn("TCPMiddleware::reserveRoom failed: invalid customerID <= 0 or empty location");
+			return false;
+		}
 		Customer customer = (Customer) readData(Customer.getKey(customerID));
 		if (customer == null)
 		{
@@ -389,6 +437,18 @@ public class TCPMiddleware extends ResourceManager
 	{
 		Trace.info("TCPMiddleware::bundle(" + customerID + ", flights=" + flightNumbers + ", loc=" + location + ", car=" + car + ", room=" + room + ") called");
 
+		if (customerID <= 0 || flightNumbers == null)
+		{
+			Trace.warn("TCPMiddleware::bundle failed--invalid customerID <= 0 or null flightNumbers");
+			return false;
+		}
+
+		if ((car || room) && (location == null || location.trim().isEmpty()))
+		{
+			Trace.warn("TCPMiddleware::bundle failed--car or room requested without location");
+			return false;
+		}
+
 		// Phase 1: Validate Customer Presence locally
 		Customer customer = (Customer) readData(Customer.getKey(customerID));
 		if (customer == null)
@@ -406,7 +466,18 @@ public class TCPMiddleware extends ResourceManager
 		Map<Integer, Integer> flightFrequencies = new HashMap<Integer, Integer>();
 		for (String flightStr : flightNumbers)
 		{
-			int fn = Integer.parseInt(flightStr);
+			int fn;
+			try {
+				fn = Integer.parseInt(flightStr);
+			} catch (NumberFormatException nfe) {
+				Trace.warn("TCPMiddleware::bundle aborting: non-integer flight number " + flightStr);
+				return false;
+			}
+			if (fn <= 0)
+			{
+				Trace.warn("TCPMiddleware::bundle aborting: invalid flight number <= 0: " + fn);
+				return false;
+			}
 			Integer count = flightFrequencies.get(fn);
 			flightFrequencies.put(fn, (count == null ? 1 : count + 1));
 		}
