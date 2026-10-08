@@ -69,6 +69,7 @@ public class TCPMiddleware extends ResourceManager
 	public boolean addFlight(int flightNum, int flightSeats, int flightPrice) throws RemoteException
 	{
 		Trace.info("TCPMiddleware::addFlight(" + flightNum + ", " + flightSeats + ", $" + flightPrice + ") -> Flights RM");
+		if (flightSeats < 0) return false;
 		if (m_flightRM == null) {
 			throw new RemoteException("Flights RM not connected");
 		}
@@ -113,6 +114,7 @@ public class TCPMiddleware extends ResourceManager
 	public boolean addCars(String location, int count, int price) throws RemoteException
 	{
 		Trace.info("TCPMiddleware::addCars(" + location + ", " + count + ", $" + price + ") -> Cars RM");
+		if (count < 0) return false;
 		if (m_carRM == null) {
 			throw new RemoteException("Cars RM not connected");
 		}
@@ -157,6 +159,7 @@ public class TCPMiddleware extends ResourceManager
 	public boolean addRooms(String location, int count, int price) throws RemoteException
 	{
 		Trace.info("TCPMiddleware::addRooms(" + location + ", " + count + ", $" + price + ") -> Rooms RM");
+		if (count < 0) return false;
 		if (m_roomRM == null) {
 			throw new RemoteException("Rooms RM not connected");
 		}
