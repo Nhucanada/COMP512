@@ -69,7 +69,7 @@ public class TCPMiddleware extends ResourceManager
 	public boolean addFlight(int flightNum, int flightSeats, int flightPrice) throws RemoteException
 	{
 		Trace.info("TCPMiddleware::addFlight(" + flightNum + ", " + flightSeats + ", $" + flightPrice + ") -> Flights RM");
-		if (flightSeats < 0) return false;
+		if (flightSeats < 0 || flightPrice < 0) return false;
 		if (m_flightRM == null) {
 			throw new RemoteException("Flights RM not connected");
 		}
@@ -114,7 +114,7 @@ public class TCPMiddleware extends ResourceManager
 	public boolean addCars(String location, int count, int price) throws RemoteException
 	{
 		Trace.info("TCPMiddleware::addCars(" + location + ", " + count + ", $" + price + ") -> Cars RM");
-		if (count < 0) return false;
+		if (count < 0 || price < 0) return false;
 		if (m_carRM == null) {
 			throw new RemoteException("Cars RM not connected");
 		}
@@ -159,7 +159,7 @@ public class TCPMiddleware extends ResourceManager
 	public boolean addRooms(String location, int count, int price) throws RemoteException
 	{
 		Trace.info("TCPMiddleware::addRooms(" + location + ", " + count + ", $" + price + ") -> Rooms RM");
-		if (count < 0) return false;
+		if (count < 0 || price < 0) return false;
 		if (m_roomRM == null) {
 			throw new RemoteException("Rooms RM not connected");
 		}
@@ -405,29 +405,60 @@ public class TCPMiddleware extends ResourceManager
 			throw new RemoteException("One or more backend ResourceManagers not connected");
 		}
 
-		// Phase 2: Availability Pre-check across all requested resources
-		Map<Integer, Integer> flightFrequencies = new HashMap<Integer, Integer>();
-		for (String flightStr : flightNumbers)
+		if (flightNumbers == null || flightNumbers.isEmpty())
 		{
-			int fn = Integer.parseInt(flightStr);
-			Integer count = flightFrequencies.get(fn);
-			flightFrequencies.put(fn, (count == null ? 1 : count + 1));
+			Trace.warn("TCPMiddleware::bundle aborting: flight numbers cannot be empty");
+			return false;
 		}
 
-		for (Map.Entry<Integer, Integer> entry : flightFrequencies.entrySet())
+		// Phase 2: Availability Pre-check across all requested resources
+		// Reject duplicate flight numbers in bundle
+		Set<Integer> uniqueFlights = new HashSet<Integer>();
+		Vector<Integer> parsedFlightNumbers = new Vector<Integer>();
+		for (String flightStr : flightNumbers)
 		{
-			int flightNum = entry.getKey();
-			int needed = entry.getValue();
-			int available = m_flightRM.queryFlight(flightNum);
-			if (available < needed)
+			if (flightStr == null || flightStr.trim().isEmpty())
 			{
-				Trace.warn("TCPMiddleware::bundle aborting: flight " + flightNum + " has " + available + " seats, needed " + needed);
+				Trace.warn("TCPMiddleware::bundle aborting: empty or null flight number");
+				return false;
+			}
+			int fn;
+			try {
+				fn = Integer.parseInt(flightStr.trim());
+			} catch (NumberFormatException e) {
+				Trace.warn("TCPMiddleware::bundle aborting: invalid flight number format '" + flightStr + "'");
+				return false;
+			}
+			if (fn < 0)
+			{
+				Trace.warn("TCPMiddleware::bundle aborting: negative flight number " + fn);
+				return false;
+			}
+			if (!uniqueFlights.add(fn))
+			{
+				Trace.warn("TCPMiddleware::bundle aborting: duplicate flight number " + fn + " in bundle");
+				return false;
+			}
+			parsedFlightNumbers.add(fn);
+		}
+
+		for (int flightNum : parsedFlightNumbers)
+		{
+			int available = m_flightRM.queryFlight(flightNum);
+			if (available < 1)
+			{
+				Trace.warn("TCPMiddleware::bundle aborting: flight " + flightNum + " has " + available + " seats, needed 1");
 				return false;
 			}
 		}
 
 		if (car)
 		{
+			if (location == null || location.trim().isEmpty())
+			{
+				Trace.warn("TCPMiddleware::bundle aborting: location required when car requested");
+				return false;
+			}
 			int availableCars = m_carRM.queryCars(location);
 			if (availableCars < 1)
 			{
@@ -438,6 +469,11 @@ public class TCPMiddleware extends ResourceManager
 
 		if (room)
 		{
+			if (location == null || location.trim().isEmpty())
+			{
+				Trace.warn("TCPMiddleware::bundle aborting: location required when room requested");
+				return false;
+			}
 			int availableRooms = m_roomRM.queryRooms(location);
 			if (availableRooms < 1)
 			{
@@ -451,9 +487,8 @@ public class TCPMiddleware extends ResourceManager
 		boolean reservationSuccess = true;
 
 		// 3.1 Reserve Flights
-		for (String flightStr : flightNumbers)
+		for (final int fn : parsedFlightNumbers)
 		{
-			final int fn = Integer.parseInt(flightStr);
 			boolean ok = reserveFlight(customerID, fn);
 			if (ok)
 			{

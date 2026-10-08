@@ -143,10 +143,16 @@ class DistributedSystemTester:
             "QueryCars,Montreal\n"
             "QueryRooms,Montreal\n"
             "AddCustomerID,2\n"
-            "Bundle,2,101,Montreal,true,true\n"
+            "AddFlight,999,-5,100\n"
+            "AddFlight,999,5,-100\n"
+            "AddCars,NegativeCity,5,-50\n"
+            "AddRooms,NegativeCity,5,-50\n"
+            "Bundle,2,101,101,Montreal,1,1\n"
+            "Bundle,2,101,Montreal,1,1\n"
             "QueryFlight,101\n"
             "QueryCars,Montreal\n"
             "QueryRooms,Montreal\n"
+            "QueryCustomer,2\n"
             "Quit\n"
         )
 
@@ -164,8 +170,13 @@ class DistributedSystemTester:
         self.test("RMI Customer Bill Query", "Bill for customer 1" in out and "$250" in out and "$50" in out and "$100" in out)
         self.test("RMI Cascading Customer Deletion", "Customer Deleted" in out)
         self.test("RMI Restores inventory counts after customer deletion", "Number of seats available: 10" in out and "Number of cars at this location: 5" in out)
-        self.test("RMI Bundle reservation succeeds", "Bundle Reserved" in out)
-        self.test("RMI Bundle updates all target inventories", "Number of seats available: 9" in out and "Number of cars at this location: 4" in out)
+        self.test("RMI Negative seats and prices rejected", "Flight could not be added" in out and "Cars could not be added" in out and "Rooms could not be added" in out)
+        self.test("RMI Duplicate flight numbers in bundle rejected", "Bundle could not be reserved" in out)
+        self.test("RMI Bundle reservation succeeds with 0/1 boolean inputs", "Bundle Reserved" in out)
+        self.test("RMI Bundle reserves car and room in addition to flight",
+                  "Number of seats available: 9" in out and "Number of cars at this location: 4" in out and "Number of rooms at this location: 2" in out)
+        self.test("RMI Customer bill itemizes flight, car, and room from bundle",
+                  "Bill for customer 2" in out and "flight-101" in out and "car-montreal" in out and "room-montreal" in out)
 
         self.cleanup()
 
@@ -227,10 +238,16 @@ class DistributedSystemTester:
             "QueryCars,Toronto\n"
             "QueryRooms,Toronto\n"
             "AddCustomerID,20\n"
-            "Bundle,20,202,Toronto,true,true\n"
+            "AddFlight,888,-5,100\n"
+            "AddFlight,888,5,-100\n"
+            "AddCars,NegativeCity,5,-50\n"
+            "AddRooms,NegativeCity,5,-50\n"
+            "Bundle,20,202,Toronto,1,1\n"
             "QueryFlight,202\n"
-            "Bundle,20,202,202,Toronto,true,true\n"  # Needs 2 seats but only 1 left -> partial failure!
-            "QueryFlight,202\n"  # Must remain 1 after rollback!
+            "QueryCars,Toronto\n"
+            "QueryRooms,Toronto\n"
+            "Bundle,20,202,202,Toronto,1,1\n"  # Duplicate flight -> fails!
+            "QueryFlight,202\n"
             "Quit\n"
         )
 
@@ -245,9 +262,11 @@ class DistributedSystemTester:
         self.test("TCP Single reservations executed cleanly", "Flight Reserved" in out and "Car Reserved" in out and "Room Reserved" in out)
         self.test("TCP Customer bill itemized accurately", "Bill for customer 10" in out and "$180" in out and "$75" in out and "$120" in out)
         self.test("TCP Cascading customer cancellation restores inventory", "Number of seats available: 2" in out and "Number of cars at this location: 2" in out)
-        self.test("TCP Bundle reservation commits successfully", "Bundle Reserved" in out)
-        self.test("TCP Bundle atomicity & LIFO compensating rollback on partial failure",
-                  "Bundle could not be reserved" in out and "Number of seats available: 1" in out)
+        self.test("TCP Negative seats and prices rejected", "Flight could not be added" in out and "Cars could not be added" in out and "Rooms could not be added" in out)
+        self.test("TCP Bundle reservation succeeds with 0/1 boolean inputs", "Bundle Reserved" in out)
+        self.test("TCP Bundle reserves car and room in addition to flight",
+                  "Number of seats available: 1" in out and "Number of cars at this location: 1" in out and "Number of rooms at this location: 1" in out)
+        self.test("TCP Bundle duplicate flight rejection", "Bundle could not be reserved" in out)
 
         # 4. Multi-threaded Concurrent Client Stress Test
         print("\n  Executing Concurrent TCP Stress Test (10 concurrent clients)...")

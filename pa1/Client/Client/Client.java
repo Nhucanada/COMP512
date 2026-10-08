@@ -35,12 +35,22 @@ public abstract class Client
 			Vector<String> arguments = new Vector<String>();
 			try {
 				System.out.print((char)27 + "[32;1m\n>] " + (char)27 + "[0m");
-				command = stdin.readLine().trim();
+				command = stdin.readLine();
 			}
 			catch (IOException io) {
 				System.err.println((char)27 + "[31;1mClient exception: " + (char)27 + "[0m" + io.getLocalizedMessage());
 				io.printStackTrace();
 				System.exit(1);
+			}
+
+			if (command == null)
+			{
+				break;
+			}
+			command = command.trim();
+			if (command.isEmpty())
+			{
+				continue;
 			}
 
 			try {
@@ -431,6 +441,10 @@ public abstract class Client
 
 	public static boolean toBoolean(String string)// throws Exception
 	{
-		return (Boolean.valueOf(string)).booleanValue();
+		if (string == null) {
+			return false;
+		}
+		String s = string.trim().toLowerCase();
+		return s.equals("true") || s.equals("1") || s.equals("y") || s.equals("yes") || s.equals("t");
 	}
 }
