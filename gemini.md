@@ -301,7 +301,7 @@ COMP 512/
 
 > **PA1 Baseline Status**: **Full RMI & TCP Distributed Implementation Complete & Verified**  
 > **Course Adherence Score**: **7 / 7 Core Checks Passing, 0 Warnings**  
-> (`check_course_adherence.py` [7/7] + `test_edge_cases.py` [5/5] + `test_distributed_system.py` [18/18] + `verify_pa1.py` [3/3])
+> (`check_course_adherence.py` [7/7] + `test_edge_cases.py` [8/8] + `test_distributed_system.py` [23/23] + `verify_pa1.py` [3/3])
 
 | Component / Task | Category | Points | Status | Technical Details & Requirements |
 | :--- | :--- | :--- | :--- | :--- |
@@ -309,10 +309,12 @@ COMP 512/
 | **3-Tier RMI Middleware** | Part 1.1 | 10 pts | 🟢 Completed | [`RMIMiddleware.java`](file:///Users/nathanhu/downloads/COMP%20512/pa1/Server/Server/RMI/RMIMiddleware.java) implementing `IResourceManager`, binding to registry, routing to 3 RMs |
 | **3 Dedicated RMs** | Part 1.1 | 5 pts | 🟢 Completed | Standalone `Flights`, `Cars`, `Rooms` RMs running on separate ports/machines with group_21_ prefix |
 | **Customer Strategy** | Part 1.1 | 5 pts | 🟢 Completed | Option C: Centralized customer tracking at Middleware (`newCustomer`, cascading `deleteCustomer`, itemized `queryCustomerInfo`) |
-| **Bundle Implementation** | Part 1.1 | 5 pts | 🟢 Completed | Multi-resource reservation with availability pre-check and LIFO compensating rollback on partial failure |
+| **Bundle Implementation** | Part 1.1 | 5 pts | 🟢 Completed | Multi-resource reservation with availability pre-check, duplicate flight number rejection, car/room 0/1/Y/N flag support, and LIFO compensating rollback on partial failure |
+| **Negative Input Guards** | Part 1.1 / 1.2 | — | 🟢 Completed | Strictly reject negative counts (`count < 0`) AND negative prices (`price < 0`) across `ResourceManager`, `RMIMiddleware`, and `TCPMiddleware` |
 | **TCP Generic RPC Service** | Part 1.2 | 15 pts | 🟢 Completed | Generic [`TCPMessage.java`](file:///Users/nathanhu/downloads/COMP%20512/pa1/Server/Server/TCP/TCPMessage.java), [`TCPResponse.java`](file:///Users/nathanhu/downloads/COMP%20512/pa1/Server/Server/TCP/TCPResponse.java), & dynamic [`TCPProxy.java`](file:///Users/nathanhu/downloads/COMP%20512/pa1/Server/Server/TCP/TCPProxy.java) client proxy |
 | **Non-blocking Middleware** | Part 1.2 | 20 pts | 🟢 Completed | [`TCPMiddleware.java`](file:///Users/nathanhu/downloads/COMP%20512/pa1/Server/Server/TCP/TCPMiddleware.java): multi-threaded executor thread pool, dedicated sockets per call to eliminate stream corruption |
 | **Concurrent RMs (TCP)** | Part 1.2 | 15 pts | 🟢 Completed | [`TCPResourceManager.java`](file:///Users/nathanhu/downloads/COMP%20512/pa1/Server/Server/TCP/TCPResourceManager.java): multi-threaded request dispatch across cached thread pool |
+| **AI Interaction Log Export** | Part 2 | — | 🟢 Completed | Full JSON export [`pa1_ai_chat_log.json`](file:///Users/nathanhu/downloads/COMP%20512/pa1_ai_chat_log.json) (439 interaction events, estimated ~181.2k tokens) |
 | **Technical Report** | Part 2 | 15 pts | 🟡 Planned | 3–5 pages: RMI & TCP design, message formats, concurrency, customer strategy, test cases, AI token audit |
 | **Live TA Demonstration** | Part 3 | 10 pts | 🟡 Planned | 5-machine deployment on Trottier nodes (`tr-open-*`), slide presentation, interactive CLI test cases |
 
@@ -354,25 +356,30 @@ sequenceDiagram
     participant Rooms as Rooms RM
 
     C->>MW: bundle(cid, [F101, F102], "Montreal", car=true, room=true)
-    Note over MW: Step 1: Pre-check availability
-    MW->>F: queryFlight(101)
-    MW->>F: queryFlight(102)
-    MW->>Cars: queryCars("Montreal")
-    MW->>Rooms: queryRooms("Montreal")
-    alt Any item unavailable (count < 1)
-        MW-->>C: return false (Bundle rejected)
-    else All available
-        Note over MW: Step 2: Sequentially reserve
-        MW->>F: reserveFlight(cid, 101)
-        MW->>F: reserveFlight(cid, 102)
-        MW->>Cars: reserveCar(cid, "Montreal")
-        MW->>Rooms: reserveRoom(cid, "Montreal")
-        alt If any reservation step throws exception
-            Note over MW: Step 3: Compensating Rollback
-            MW->>MW: Rollback reserved items
-            MW-->>C: return false
-        else All succeed
-            MW-->>C: return true (Bundle Reserved)
+    Note over MW: Step 1: Validate Unique Flights & Customer
+    alt Duplicate flight numbers found in bundle
+        MW-->>C: return false (Bundle rejected: duplicate flight)
+    else Unique flights & valid customer
+        Note over MW: Step 2: Pre-check availability
+        MW->>F: queryFlight(101)
+        MW->>F: queryFlight(102)
+        MW->>Cars: queryCars("Montreal")
+        MW->>Rooms: queryRooms("Montreal")
+        alt Any item unavailable (count < 1)
+            MW-->>C: return false (Bundle rejected)
+        else All available
+            Note over MW: Step 3: Sequentially reserve
+            MW->>F: reserveFlight(cid, 101)
+            MW->>F: reserveFlight(cid, 102)
+            MW->>Cars: reserveCar(cid, "Montreal")
+            MW->>Rooms: reserveRoom(cid, "Montreal")
+            alt If any reservation step fails
+                Note over MW: Step 4: Compensating Rollback
+                MW->>MW: Rollback reserved items
+                MW-->>C: return false
+            else All succeed
+                MW-->>C: return true (Bundle Reserved)
+            end
         end
     end
 ```

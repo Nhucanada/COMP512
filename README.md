@@ -2,7 +2,7 @@
 
 ## 👥 Authors & Team Information
 - **Nathan Hu** — 261147733
-- **Rhea Talwar** - 261159882
+- **Project Partner**
 
 ---
 

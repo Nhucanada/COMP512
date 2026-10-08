@@ -148,6 +148,11 @@ public class ResourceManager implements IResourceManager
 	public boolean addFlight(int flightNum, int flightSeats, int flightPrice) throws RemoteException
 	{
 		Trace.info("RM::addFlight(" + flightNum + ", " + flightSeats + ", $" + flightPrice + ") called");
+		if (flightSeats < 0 || flightPrice < 0)
+		{
+			Trace.warn("RM::addFlight(" + flightNum + ", " + flightSeats + ", $" + flightPrice + ") failed: negative seats or price");
+			return false;
+		}
 		Flight curObj = (Flight)readData(Flight.getKey(flightNum));
 		if (curObj == null)
 		{
@@ -175,6 +180,11 @@ public class ResourceManager implements IResourceManager
 	public boolean addCars(String location, int count, int price) throws RemoteException
 	{
 		Trace.info("RM::addCars(" + location + ", " + count + ", $" + price + ") called");
+		if (count < 0 || price < 0)
+		{
+			Trace.warn("RM::addCars(" + location + ", " + count + ", $" + price + ") failed: negative count or price");
+			return false;
+		}
 		Car curObj = (Car)readData(Car.getKey(location));
 		if (curObj == null)
 		{
@@ -202,6 +212,11 @@ public class ResourceManager implements IResourceManager
 	public boolean addRooms(String location, int count, int price) throws RemoteException
 	{
 		Trace.info("RM::addRooms(" + location + ", " + count + ", $" + price + ") called");
+		if (count < 0 || price < 0)
+		{
+			Trace.warn("RM::addRooms(" + location + ", " + count + ", $" + price + ") failed: negative count or price");
+			return false;
+		}
 		Room curObj = (Room)readData(Room.getKey(location));
 		if (curObj == null)
 		{

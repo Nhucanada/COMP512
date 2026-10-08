@@ -48,6 +48,26 @@ class SpecInvariantAuditor:
         """Verify newCustomer(cid) returns false if customer already exists."""
         return "failed--customer already exists" in self.code and "return false;" in self.code
 
+    def test_negative_number_guard(self):
+        """Verify negative seats and prices are rejected across RM and Middlewares."""
+        rm_has_guard = "flightSeats < 0 || flightPrice < 0" in self.code and "count < 0 || price < 0" in self.code
+        rmi_mw = (PA1_DIR / "Server" / "Server" / "RMI" / "RMIMiddleware.java").read_text(errors="ignore")
+        tcp_mw = (PA1_DIR / "Server" / "Server" / "TCP" / "TCPMiddleware.java").read_text(errors="ignore")
+        rmi_has_guard = "flightSeats < 0 || flightPrice < 0" in rmi_mw and "count < 0 || price < 0" in rmi_mw
+        tcp_has_guard = "flightSeats < 0 || flightPrice < 0" in tcp_mw and "count < 0 || price < 0" in tcp_mw
+        return rm_has_guard and rmi_has_guard and tcp_has_guard
+
+    def test_bundle_duplicate_flight_rejection(self):
+        """Verify duplicate flight numbers in bundle are rejected in Middlewares."""
+        rmi_mw = (PA1_DIR / "Server" / "Server" / "RMI" / "RMIMiddleware.java").read_text(errors="ignore")
+        tcp_mw = (PA1_DIR / "Server" / "Server" / "TCP" / "TCPMiddleware.java").read_text(errors="ignore")
+        return "duplicate flight number" in rmi_mw and "duplicate flight number" in tcp_mw
+
+    def test_client_boolean_parsing(self):
+        """Verify Client toBoolean parses 1/0 and Y/N in addition to true/false."""
+        client_code = (PA1_DIR / "Client" / "Client" / "Client.java").read_text(errors="ignore")
+        return 'equals("1")' in client_code and 'equals("y")' in client_code
+
 def main():
     print("=" * 65)
     print("COMP 512 PA1 SPECIFICATION INVARIANT & EDGE CASE AUDIT")
@@ -60,6 +80,9 @@ def main():
         ("Protected deletion prevents deleting items with active bookings", auditor.test_item_deletion_guard),
         ("Customer deletion cascades inventory count release", auditor.test_customer_deletion_release),
         ("Duplicate customer ID registration rejection", auditor.test_duplicate_customer_rejection),
+        ("Negative seats and negative prices rejected", auditor.test_negative_number_guard),
+        ("Duplicate flight numbers in bundle rejected", auditor.test_bundle_duplicate_flight_rejection),
+        ("Client boolean parsing handles 0/1, Y/N, and true/false", auditor.test_client_boolean_parsing),
     ]
 
     passed = 0
