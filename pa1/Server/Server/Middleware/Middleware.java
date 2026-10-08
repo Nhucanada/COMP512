@@ -1,24 +1,28 @@
 package Server.Middleware;
 
-import Server.Common.ResourceManager;
+import Server.Common.Customer;
+import Server.Common.RMHashMap;
 import Server.Interface.IResourceManager;
 
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
+import java.rmi.server.UnicastRemoteObject;
+import java.util.Calendar;
 import java.util.Vector;
 
 public class Middleware implements IResourceManager {
 
-    private static IResourceManager m_resourceManager;
+    // Remote interface stubs for backend RMs
+    private static IResourceManager flight_RM = null;
+    private static IResourceManager car_RM = null;
+    private static IResourceManager room_RM = null;
 
-    //rms
-    private static ResourceManager flight_RM;
-    private static ResourceManager car_RM;
-    private static ResourceManager room_RM;
+    // customer hashmap
+    protected RMHashMap m_customers = new RMHashMap();
 
-    // server info
+    // server config
     private static final String s_serverName = "Middleware";
     private static final String s_flightRMName = "Flight";
     private static final String s_carRMName = "Car";
@@ -30,11 +34,9 @@ public class Middleware implements IResourceManager {
         super();
     }
 
-    public void main(String args[]) {
-        // list of RMS on startup, parse through and assign to the appropriate RM variable
-
+    public static void main(String args[]) {
         if (args.length < 3) {
-            System.err.println("Usage: java Middleware <flightRM> <carRM> <roomRM>");
+            System.err.println("Usage: java Middleware <flightRM> <carRM> <roomRM> [port]");
             System.exit(1);
         }
 
@@ -43,7 +45,6 @@ public class Middleware implements IResourceManager {
         String roomhost = args[2];
 
         if (args.length >= 4) {
-            //get port number, if not default to 3021
             try {
                 s_rmiPort = Integer.parseInt(args[3]);
             } catch (NumberFormatException e) {
@@ -53,47 +54,43 @@ public class Middleware implements IResourceManager {
         }
 
         try {
-            // create connections to the RMS
-            connectRM(flighthost, s_rmiPort, s_flightRMName);
-            connectRM(carhost, s_rmiPort, s_carRMName);
-            connectRM(roomhost, s_rmiPort, s_roomRMName);
+            // establish RM instances
+            flight_RM = connectRM(flighthost, s_rmiPort, s_flightRMName);
+            car_RM = connectRM(carhost, s_rmiPort, s_carRMName);
+            room_RM = connectRM(roomhost, s_rmiPort, s_roomRMName);
 
             Middleware middleware = new Middleware();
-            IResourceManager stub = (IResourceManager) java.rmi.server.UnicastRemoteObject.exportObject(middleware, 0);
+            IResourceManager stub = (IResourceManager) UnicastRemoteObject.exportObject(middleware, 0);
 
-            //bind middleware to RMI registry
+            // bind to rmi registry
             Registry registry;
             try {
-                //check if registry exists
                 registry = LocateRegistry.getRegistry(s_rmiPort);
                 registry.list();
             } catch (RemoteException e) {
-                //create if it doesn't load/exist
                 registry = LocateRegistry.createRegistry(s_rmiPort);
             }
 
-            registry.rebind(s_serverName, stub);
-            System.out.println("'" + s_serverName + "' middleware server ready and bound to '" + s_serverName + "'")
+            String bindName = s_rmiPrefix + s_serverName;
+            registry.rebind(bindName, stub);
+            System.out.println("'" + bindName + "' middleware server ready and bound.");
 
         } catch (Exception e) {
             System.err.println("Middleware exception: " + e.getMessage());
             e.printStackTrace();
             System.exit(1);
         }
-
-
     }
 
-    public void connectRM(String server, int port, String name) {
-        //taken from Client
+    public static IResourceManager connectRM(String server, int port, String name) {
         try {
             boolean first = true;
             while (true) {
                 try {
                     Registry registry = LocateRegistry.getRegistry(server, port);
-                    m_resourceManager = (IResourceManager) registry.lookup(s_rmiPrefix + name);
+                    IResourceManager rm = (IResourceManager) registry.lookup(s_rmiPrefix + name);
                     System.out.println("Connected to '" + name + "' server [" + server + ":" + port + "/" + s_rmiPrefix + name + "]");
-                    break;
+                    return rm;
                 } catch (NotBoundException | RemoteException e) {
                     if (first) {
                         System.out.println("Waiting for '" + name + "' server [" + server + ":" + port + "/" + s_rmiPrefix + name + "]");
@@ -107,131 +104,243 @@ public class Middleware implements IResourceManager {
             e.printStackTrace();
             System.exit(1);
         }
-    }
-
-
-
-
-    @Override
-    public boolean addFlight(int flightNum, int flightSeats, int flightPrice) throws RemoteException {
-        return flight_RM.addFlight(flightNum, flightSeats, flightPrice);
-    }
-
-    @Override
-    public boolean addCars(String location, int numCars, int price) throws RemoteException {
-        return car_RM.addCars(location, numCars, price);
-    }
-
-    @Override
-    public boolean addRooms(String location, int numRooms, int price) throws RemoteException {
-        return room_RM.addRooms(location, numRooms, price);
-    }
-
-
-    @Override
-    public int newCustomer() throws RemoteException {
-        //TODO: figure out how to handle customers
-        return 0;
-    }
-
-    @Override
-    public boolean newCustomer(int cid) throws RemoteException {
-        //TODO: figure out how to handle customers
-        return false;
-    }
-
-    @Override
-    public boolean deleteFlight(int flightNum) throws RemoteException {
-        return flight_RM.deleteFlight(flightNum);
-    }
-
-    @Override
-    public boolean deleteCars(String location) throws RemoteException {
-        return car_RM.deleteCars(location);
-    }
-
-    @Override
-    public boolean deleteRooms(String location) throws RemoteException {
-        return room_RM.deleteRooms(location);
-    }
-
-    @Override
-    public boolean deleteCustomer(int customerID) throws RemoteException {
-        //TODO: figure out how to handle customers
-        return false;
-    }
-
-    @Override
-    public int queryFlight(int flightNumber) throws RemoteException {
-        return flight_RM.queryFlight(flightNumber);
-    }
-
-    @Override
-    public int queryCars(String location) throws RemoteException {
-        return car_RM.queryCars(location);
-    }
-
-    @Override
-    public int queryRooms(String location) throws RemoteException {
-        return room_RM.queryRooms(location);
-    }
-
-    @Override
-    public String queryCustomerInfo(int customerID) throws RemoteException {
-        //TODO: figure out how to handle customers
         return null;
     }
 
+    //--FLIGHTS--
+
     @Override
-    public int queryFlightPrice(int flightNumber) throws RemoteException {
-        return flight_RM.queryFlightPrice(flightNumber);
+    public boolean addFlight(int id, int flightNum, int flightSeats, int flightPrice) throws RemoteException {
+        return flight_RM.addFlight(id, flightNum, flightSeats, flightPrice);
     }
 
     @Override
-    public int queryCarsPrice(String location) throws RemoteException {
-        return car_RM.queryCarsPrice(location);
+    public boolean deleteFlight(int id, int flightNum) throws RemoteException {
+        return flight_RM.deleteFlight(id, flightNum);
     }
 
     @Override
-    public int queryRoomsPrice(String location) throws RemoteException {
-        return room_RM.queryRoomsPrice(location);
+    public int queryFlight(int id, int flightNumber) throws RemoteException {
+        return flight_RM.queryFlight(id, flightNumber);
     }
 
     @Override
-    public boolean reserveFlight(int customerID, int flightNumber) throws RemoteException {
-        return flight_RM.reserveFlight(customerID, flightNumber);
+    public int queryFlightPrice(int id, int flightNumber) throws RemoteException {
+        return flight_RM.queryFlightPrice(id, flightNumber);
+    }
+
+    // --CARS--
+
+    @Override
+    public boolean addCars(int id, String location, int numCars, int price) throws RemoteException {
+        return car_RM.addCars(id, location, numCars, price);
     }
 
     @Override
-    public boolean reserveCar(int customerID, String location) throws RemoteException {
-        return car_RM.reserveCar(customerID, location);
+    public boolean deleteCars(int id, String location) throws RemoteException {
+        return car_RM.deleteCars(id, location);
     }
 
     @Override
-    public boolean reserveRoom(int customerID, String location) throws RemoteException {
-        return room_RM.reserveRoom(customerID, location);
+    public int queryCars(int id, String location) throws RemoteException {
+        return car_RM.queryCars(id, location);
     }
 
     @Override
-    public boolean bundle(int customerID, Vector<String> flightNumbers, String location, boolean car, boolean room) throws RemoteException{
-        boolean success = true;
+    public int queryCarsPrice(int id, String location) throws RemoteException {
+        return car_RM.queryCarsPrice(id, location);
+    }
 
-        for (int i = 0; i < flightNumbers.size(); i++)
-        {
-            success = success && flight_RM.reserveFlight(customerID, Integer.parseInt(flightNumbers.get(i)));
+    //--ROOMS--
+
+    @Override
+    public boolean addRooms(int id, String location, int numRooms, int price) throws RemoteException {
+        return room_RM.addRooms(id, location, numRooms, price);
+    }
+
+    @Override
+    public boolean deleteRooms(int id, String location) throws RemoteException {
+        return room_RM.deleteRooms(id, location);
+    }
+
+    @Override
+    public int queryRooms(int id, String location) throws RemoteException {
+        return room_RM.queryRooms(id, location);
+    }
+
+    @Override
+    public int queryRoomsPrice(int id, String location) throws RemoteException {
+        return room_RM.queryRoomsPrice(id, location);
+    }
+
+    // --CUSTOMERS ---
+
+    @Override
+    public int newCustomer(int id) throws RemoteException {
+        int cid = Integer.parseInt(String.valueOf(id) +
+                String.valueOf(Calendar.getInstance().get(Calendar.MILLISECOND)) +
+                String.valueOf((int) (Math.random() * 100));
+        Customer customer = new Customer(cid);
+        synchronized(m_customers) {
+            m_customers.put(customer.getKey(), customer);
+        }
+        System.out.println("Middleware created new customer with ID: " + cid);
+        return cid;
+    }
+
+    @Override
+    public boolean newCustomer(int id, int cid) throws RemoteException {
+        synchronized(m_customers) {
+            Customer customer = (Customer) m_customers.get(Customer.getKey(cid));
+            if (customer != null) {
+                return false;
+            }
+            customer = new Customer(cid);
+            m_customers.put(customer.getKey(), customer);
+            System.out.println("Middleware created new customer with ID: " + cid);
+            return true;
+        }
+    }
+
+    @Override
+    public boolean deleteCustomer(int id, int customerID) throws RemoteException {
+        Customer customer;
+        synchronized(m_customers) {
+            customer = (Customer) m_customers.get(Customer.getKey(customerID));
+            if (customer == null) {
+                return false;
+            }
+            // Remove customer local hashmap
+            m_customers.remove(customer.getKey());
         }
 
-        if (car)
-        {
-            success = success && car_RM.reserveCar(customerID, location);
+        // unreserve all items reserved by this customer across all the rms
+        RMHashMap reservations = customer.getReservations();
+        for (Object reservedKey : reservations.keySet()) {
+            String key = (String) reservedKey;
+            RMItem item = (RMItem) reservations.get(key);
+
+            // direct items on appropriate RM backend based on item key type
+            if (key.startsWith("flight-")) {
+                flight_RM.removeReservation(id, customerID, item.getKey(), item.getCount());
+            } else if (key.startsWith("car-")) {
+                car_RM.removeReservation(id, customerID, item.getKey(), item.getCount());
+            } else if (key.startsWith("room-")) {
+                room_RM.removeReservation(id, customerID, item.getKey(), item.getCount());
+            }
+        }
+        return true;
+    }
+
+    @Override
+    public String queryCustomerInfo(int id, int customerID) throws RemoteException {
+        Customer customer;
+        synchronized(m_customers) {
+            customer = (Customer) m_customers.get(Customer.getKey(customerID));
+        }
+        if (customer == null) {
+            return "";
+        }
+        return customer.printBill();
+    }
+
+    // --- RESERVATIONS ---
+
+    @Override
+    public boolean reserveFlight(int id, int customerID, int flightNumber) throws RemoteException {
+        Customer customer;
+        synchronized(m_customers) {
+            customer = (Customer) m_customers.get(Customer.getKey(customerID));
+        }
+        if (customer == null) {
+            return false;
         }
 
-        if (room)
-        {
-            success = success && room_RM.reserveRoom(customerID, location);
+        // delegate seat reservation to flight RM
+        boolean success = flight_RM.reserveFlight(id, customerID, flightNumber);
+        if (success) {
+            int price = flight_RM.queryFlightPrice(id, flightNumber);
+            synchronized(m_customers) {
+                customer.reserve(Flight.getKey(flightNumber), String.valueOf(flightNumber), price);
+            }
         }
-
         return success;
     }
-}
 
+    @Override
+    public boolean reserveCar(int id, int customerID, String location) throws RemoteException {
+        Customer customer;
+        synchronized(m_customers) {
+            customer = (Customer) m_customers.get(Customer.getKey(customerID));
+        }
+        if (customer == null) {
+            return false;
+        }
+
+        boolean success = car_RM.reserveCar(id, customerID, location);
+        if (success) {
+            int price = car_RM.queryCarsPrice(id, location);
+            synchronized(m_customers) {
+                customer.reserve(Car.getKey(location), location, price);
+            }
+        }
+        return success;
+    }
+
+    @Override
+    public boolean reserveRoom(int id, int customerID, String location) throws RemoteException {
+        Customer customer;
+        synchronized(m_customers) {
+            customer = (Customer) m_customers.get(Customer.getKey(customerID));
+        }
+        if (customer == null) {
+            return false;
+        }
+
+        boolean success = room_RM.reserveRoom(id, customerID, location);
+        if (success) {
+            int price = room_RM.queryRoomsPrice(id, location);
+            synchronized(m_customers) {
+                customer.reserve(Room.getKey(location), location, price);
+            }
+        }
+        return success;
+    }
+
+    // --- BUNDLE ---
+
+    @Override
+    public boolean bundle(int id, int customerID, Vector<String> flightNumbers, String location, boolean car, boolean room) throws RemoteException {
+        Customer customer;
+        synchronized(m_customers) {
+            customer = (Customer) m_customers.get(Customer.getKey(customerID));
+        }
+        if (customer == null) {
+            return false;
+        }
+
+        // reserve flights
+        for (String flightStr : flightNumbers) {
+            int flightNum = Integer.parseInt(flightStr);
+            if (!reserveFlight(id, customerID, flightNum)) {
+                return false;
+            }
+        }
+
+        //  Reserve car if requested
+        if (car) {
+            if (!reserveCar(id, customerID, location)) {
+                return false;
+            }
+        }
+
+        // Reserve room if requested
+        if (room) {
+            if (!reserveRoom(id, customerID, location)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+}
