@@ -7,7 +7,7 @@ __MACOSX
 *.class
 *.jar
 pa1/Server/RMIInterface.jar
-pa1-students/Template/Server/RMIInterface.jar
+pa1/pa1-students/Template/Server/RMIInterface.jar
 
 # Build / Output directories
 bin/
