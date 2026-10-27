@@ -5,7 +5,7 @@ __MACOSX
 
 # Java compiled classes & JARs
 *.class
-*.jar
+pa1/*.jar
 pa1/Server/RMIInterface.jar
 pa1/pa1-students/Template/Server/RMIInterface.jar
 
