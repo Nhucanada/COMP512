@@ -26,7 +26,7 @@ gameid=game-$group-99
 # player1 -> process 1, player 2 -> process 2, etc .. add more depending on how many players are playing.
 # Remember to start the scripts of corresponding players from the corresponding servers.
 # comment out process3 if you are only playing 2 players, etc.
-export process1=tr-open-03:3000$group
+export process1=tr-open-02:3000$group
 export process2=tr-open-04:3000$group
 #export process3=server3:403$group
 #export process4=server4:404$group
