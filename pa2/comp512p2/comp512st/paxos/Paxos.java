@@ -7,8 +7,13 @@ import comp512.utils.*;
 
 // Any other imports that you may need.
 import java.io.*;
+import java.net.ServerSocket;
+import java.util.LinkedList;
+import java.util.Queue;
 import java.util.logging.*;
 import java.net.UnknownHostException;
+
+
 
 
 // ANY OTHER classes, etc., that you add must be private to this package and not visible to the application layer.
@@ -20,43 +25,36 @@ public class Paxos
 {
 	GCL gcl;
 	FailCheck failCheck;
+	Logger logger;
+	String myProcess;
+	String[] allValidProcesses;
+
+	Boolean[] promised; // array to keep track of which processes have promised
+	Boolean[] accepted; // array to keep track of which processes have accepted
+
+	int promisedNum;
+	int acceptedNum;
+
+	int ballotID;
 
 	public Paxos(String myProcess, String[] allGroupProcesses, Logger logger, FailCheck failCheck) throws IOException, UnknownHostException
 	{
-		// Rember to call the failCheck.checkFailure(..) with appropriate arguments throughout your Paxos code to force fail points if necessary.
+		// Remember to call the failCheck.checkFailure(...) with appropriate arguments throughout your Paxos code to force fail points if necessary.
 		this.failCheck = failCheck;
 
 		// Initialize the GCL communication system as well as anything else you need to.
 		this.gcl = new GCL(myProcess, allGroupProcesses, null, logger) ;
+		this.logger = logger;
 
-		// TODO: The constructor will throw an UnknownHostException or IOException if you pass an in-
-		//correct host name or if it is not able to find the IP address for it.
+		this.myProcess = myProcess;
 
-		boolean myProcessIncluded = false;
+		this.allValidProcesses = allGroupProcesses;
 
-		for (String process : allGroupProcesses)
-		{
-			if (process == myProcess)
-			{
-				myProcessIncluded = true;
-				break;
-			}
-
-			failCheck.checkFailure()
-
-		}
-
-		//TODO: It can also throw an IllegalArgumentException if it does not see myProcess also included
-		//in allGroupProcesses.
-
-		if (!myProcessIncluded)
-		{
-			throw new Illegal
-		}
 
 	}
 
-	// This is what the application layer is going to call to send a message/value, such as the player and the move
+
+	// paxos recieves msg (move) from app layer. wants to add move to total order.
 	public void broadcastTOMsg(Object val)
 	{
 		// This is just a place holder.
@@ -67,17 +65,33 @@ public class Paxos
 
 	// This is what the application layer is calling to figure out what is the next message in the total order.
 	// Messages delivered in ALL the processes in the group should deliver this in the same order.
+	//
 	public Object acceptTOMsg() throws InterruptedException
 	{
+		Queue<String> buffer = new LinkedList<>();
+
+
+
 		// This is just a place holder.
 		GCMessage gcmsg = gcl.readGCMessage();
 		return gcmsg.val;
 	}
+
 
 	// Add any of your own shutdown code into this method.
 	public void shutdownPaxos()
 	{
 		gcl.shutdownGCL();
 	}
+
+	private boolean propose()
+	{
+		gcl.broadcastMsg("propose");
+
+		return false;
+	}
+
+
+
 }
 
