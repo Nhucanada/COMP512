@@ -15,7 +15,7 @@ import java.net.UnknownHostException;
 
 // extend / implement whatever interface, etc. as required.
 // NO OTHER public members / methods allowed. broadcastTOMsg, acceptTOMsg, and shutdownPaxos must be the only visible methods to the application layer.
-//		You should also not change the signature of these methods (arguments and return value) other aspects maybe changed with reasonable design needs.
+//You should also not change the signature of these methods (arguments and return value) other aspects maybe changed with reasonable design needs.
 public class Paxos
 {
 	GCL gcl;
@@ -28,6 +28,31 @@ public class Paxos
 
 		// Initialize the GCL communication system as well as anything else you need to.
 		this.gcl = new GCL(myProcess, allGroupProcesses, null, logger) ;
+
+		// TODO: The constructor will throw an UnknownHostException or IOException if you pass an in-
+		//correct host name or if it is not able to find the IP address for it.
+
+		boolean myProcessIncluded = false;
+
+		for (String process : allGroupProcesses)
+		{
+			if (process == myProcess)
+			{
+				myProcessIncluded = true;
+				break;
+			}
+
+			failCheck.checkFailure()
+
+		}
+
+		//TODO: It can also throw an IllegalArgumentException if it does not see myProcess also included
+		//in allGroupProcesses.
+
+		if (!myProcessIncluded)
+		{
+			throw new Illegal
+		}
 
 	}
 
