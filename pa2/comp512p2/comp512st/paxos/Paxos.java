@@ -18,6 +18,31 @@ import java.net.UnknownHostException;
 
 // ANY OTHER classes, etc., that you add must be private to this package and not visible to the application layer.
 
+// message wrapper to ensure paxos protocol
+class PaxosMessage implements Serializable{
+
+	private static final long serialVersionID = 1L;
+
+	// todo: change to enum??
+	String type;    //"PROPOSE", "PROMISE", "ACCEPT", "ACCEPTED"
+
+	int instance;
+	int ballotNum;
+	String sender;
+	Object value;
+	int acceptedBal;
+
+	public PaxosMessage(String type, int instance, int ballotNumber, String sender, Object value, int acceptedBallot) {
+		this.type = type;
+		this.instance = instance;
+		this.ballotNum = ballotNumber;
+		this.sender = sender;
+		this.value = value;
+		this.acceptedBal = acceptedBallot;
+	}
+
+}
+
 // extend / implement whatever interface, etc. as required.
 // NO OTHER public members / methods allowed. broadcastTOMsg, acceptTOMsg, and shutdownPaxos must be the only visible methods to the application layer.
 //You should also not change the signature of these methods (arguments and return value) other aspects maybe changed with reasonable design needs.
