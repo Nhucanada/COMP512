@@ -127,7 +127,7 @@ public class Paxos
 
 		switch (msg.type)
 		{
-			case("PROPOSE"):
+			case"PROPOSE":
 			{
 				int inst = msg.instance;
 				int balNum = msg.ballotNum;
@@ -148,15 +148,35 @@ public class Paxos
 
 				}
 			}
+				break;
+			case "PROMISE":
+				// will get handled in runConsensusInstance
+				break;
+			case "ACCEPT":
+			{
+				int inst = msg.instance;
+				int balNum = msg.ballotNum;
+				int currPromise = highestAcceptedBallot.getOrDefault(inst, -1); //get inst, or default to -1
 
+				if (balNum >= currPromise)
+				{
+					highestPromisedBallot.put(inst, balNum);
+					highestAcceptedBallot.put(inst, balNum);
+					acceptedValues.put(inst, msg.value); //todo: fix
+					failCheck.checkFailure(myProcess, "accepted");
+
+				}
+			}
+			break;
+			case "ACCEPTED":
+				// Handled synchronously inside runConsensusInstance
+				break;
+
+			default:
+				break;
 		}
 
-
 	}
-
-
-
-
 	// paxos recieves msg (move) from app layer. wants to add move to total order.
 	public void broadcastTOMsg(Object val)
 	{
