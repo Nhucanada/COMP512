@@ -9,7 +9,9 @@ import comp512.utils.*;
 import java.io.*;
 import java.net.ServerSocket;
 import java.util.LinkedList;
+import java.util.Map;
 import java.util.Queue;
+import java.util.concurrent.*;
 import java.util.logging.*;
 import java.net.UnknownHostException;
 
@@ -54,11 +56,21 @@ public class Paxos
 	String myProcess;
 	String[] allValidProcesses;
 
-	Boolean[] promised; // array to keep track of which processes have promised
-	Boolean[] accepted; // array to keep track of which processes have accepted
 
-	int promisedNum;
-	int acceptedNum;
+
+	private int currInstance = 0;
+
+	// NOTE: concurrentHashMaps are thread safe
+	private final Map<Integer, Integer> highestPromisedBallot = new ConcurrentHashMap<>();
+	private final Map<Integer, Integer> highestAcceptedBallot = new ConcurrentHashMap<>();
+	private final Map<Integer, Integer> acceptedValues = new ConcurrentHashMap<>();
+
+
+	//blocking queue to ensure TO
+	private final BlockingQueue<Object> deliveredQueue = new LinkedBlockingQueue<>();
+
+	private Thread listenerThread;
+	private volatile boolean running = true; // volatile booleans are
 
 	int ballotID;
 
@@ -75,8 +87,74 @@ public class Paxos
 
 		this.allValidProcesses = allGroupProcesses;
 
+		//start listening for msgs
+		this.listenerThread = new Thread(this::listenLoop);
+		this.listenerThread.start();
+	}
+
+	//loop to listen for incoming msgs
+	private void listenLoop(){
+
+		try{
+			while (running){
+				GCMessage gcMsg = gcl.readGCMessage();
+				if (gcMsg == null || gcMsg.val == null)
+				{
+					break;
+				}
+
+				if (gcMsg.val instanceof PaxosMessage)
+				{
+					PaxosMessage pMsg = (PaxosMessage) gcMsg.val;
+					handlePaxosMsg(pmsg);
+
+				}
+
+			}
+		} catch (InterruptedException e) {
+
+		} catch (Exception e) {
+			logger.log(Level.SEVERE, "Error in Paxos Listening Loop: ", e );
+		}
+	}
+
+	// synchronised: can only be used by 1 thread at a time
+	private synchronized void handlePaxosMsg (PaxosMessage msg)
+	{
+
+		//TODO: fix
+		failCheck.checkFailure(myProcess, "handlePaxosMessage");
+
+		switch (msg.type)
+		{
+			case("PROPOSE"):
+			{
+				int inst = msg.instance;
+				int balNum = msg.ballotNum;
+				int currPromise = highestAcceptedBallot.getOrDefault(inst, -1); //get inst, or default to -1
+
+				if (balNum > currPromise)
+				{
+					highestPromisedBallot.put(inst, balNum);
+					failCheck.checkFailure(myProcess,"propose"); //TODO
+
+					// promise highest value
+
+					int accepted = highestAcceptedBallot.getOrDefault(inst, -1);
+					Object accVal = acceptedValues.get(inst);
+					//create new promise msg
+					PaxosMessage promise = new PaxosMessage("PROMISE", inst, balNum, myProcess, accVal, accepted);
+					gcl.sendMsg(promise, msg.sender);
+
+				}
+			}
+
+		}
+
 
 	}
+
+
 
 
 	// paxos recieves msg (move) from app layer. wants to add move to total order.
