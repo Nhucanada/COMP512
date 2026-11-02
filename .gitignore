@@ -6,8 +6,13 @@ __MACOSX
 # Java compiled classes & JARs
 *.class
 *.jar
+!comp512p2.jar
 pa1/Server/RMIInterface.jar
 pa1-students/Template/Server/RMIInterface.jar
+
+# Submission archives
+*.zip
+COMP512_PA1_Submission*/
 
 # Build / Output directories
 bin/
