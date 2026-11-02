@@ -8,7 +8,7 @@ __MACOSX
 *.jar
 !comp512p2.jar
 pa1/Server/RMIInterface.jar
-pa1-students/Template/Server/RMIInterface.jar
+pa1/pa1-students/Template/Server/RMIInterface.jar
 
 # Submission archives
 *.zip
