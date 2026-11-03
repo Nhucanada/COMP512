@@ -1,10 +1,17 @@
 #!/bin/bash
 
-#TODO set this to where your code and jar file root dir is
-BASEDIR=$HOME/comp512/p2
+# Set this to where your code and jar file root dir is.
+# Default to $HOME/comp512/p2 if present, otherwise auto-resolve to parent directory.
+if [[ -z "$BASEDIR" || ! -d "$BASEDIR" ]]; then
+	if [[ -d "$HOME/comp512/p2" ]]; then
+		BASEDIR=$HOME/comp512/p2
+	else
+		BASEDIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+	fi
+fi
 
 #TODO update your group number here in place of XX
-group=xx
+group=21
 
 #TODO Optional
 # this will always generate the same game island. Change the last digits to any number if you want to change it to a different island map. Otherwise leave it as it is.
@@ -12,12 +19,12 @@ gameid=game-$group-99
 
 #TODO edit these entries to put the name of the server that you are using and the associated ports.
 # Remember to start the script from this host
-export autotesthost=tr-open-01.cs.mcgill.ca
+export autotesthost=tr-open-02.cs.mcgill.ca
 # player1 -> process 1, player 2 -> process 2, etc .. add more depending on how many players are playing.
 # Script automatically counts the variables to figure out the number of players.
 export process1=${autotesthost}:401$group
 export process2=${autotesthost}:402$group
-export process3=${autotesthost}:403$group
+#export process3=${autotesthost}:403$group
 #export process4=${autotesthost}:404$group
 #export process5=${autotesthost}:405$group
 #export process6=${autotesthost}:406$group
@@ -26,7 +33,7 @@ export process3=${autotesthost}:403$group
 #export process9=${autotesthost}:409$group
 
 #TODO update these values as needed
-maxmoves=100 interval=100 randseed=xxxxxxxxx
+maxmoves=100 interval=100 randseed=93kewnkqo3n
 #TODO IF (and only if) you want to simulate failures, enable this for corresponding player numbers.
 #export failmode_N=RECEIVEPROPOSE
 #export failmode_N=AFTERSENDVOTE
@@ -34,7 +41,7 @@ maxmoves=100 interval=100 randseed=xxxxxxxxx
 #export failmode_N=AFTERBECOMINGLEADER
 #export failmode_N=AFTERVALUEACCEPT
 #For example this enabled failmode AFTERBECOMINGLEADER for player/process 2 (only one failmode can be set per process). It is important to have the export.
-export failmode_2=AFTERBECOMINGLEADER
+#export failmode_2=AFTERBECOMINGLEADER
 
 # Check if this script is being exectuted on the correct server.
 if [[ $autotesthost != $(hostname) ]]
@@ -43,26 +50,26 @@ then
 	exit 10
 fi
 
-if [[ ! -d $BASEDIR ]]
+if [[ ! -d "$BASEDIR" ]]
 then
 	echo "Error $BASEDIR is not a valid dir."
 	exit 1
 fi
 
-if [[ ! -f $BASEDIR/comp512p2.jar ]]
+if [[ ! -f "$BASEDIR/comp512p2.jar" ]]
 then
 	echo "Error cannot locate $BASEDIR/comp512p2.jar . Make sure it is present."
 	exit 1
 fi
 
-if [[ ! -d $BASEDIR/comp512st ]]
+if [[ ! -d "$BASEDIR/comp512st" ]]
 then
 	echo "Error cannot locate $BASEDIR/comp512st directory . Make sure it is present."
 	exit 1
 fi
 
 # set your classpath to include the gcl tar files and the parent path to the comp512st directory.
-export CLASSPATH=$BASEDIR/comp512p2.jar:$BASEDIR
+export CLASSPATH="$BASEDIR/comp512p2.jar:$BASEDIR"
 
 # Build the process group string.
 export processgroup=$(env | grep '^process[1-9]=' | sort | sed -e 's/.*=//')
