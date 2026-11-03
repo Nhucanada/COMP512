@@ -4,7 +4,7 @@
 # Default to $HOME/comp512/p2 if present, otherwise auto-resolve to parent directory.
 if [[ -z "$BASEDIR" || ! -d "$BASEDIR" ]]; then
 	if [[ -d "$HOME/comp512/p2" ]]; then
-		BASEDIR=$HOME/comp512/p2
+		BASEDIR=$HOME/comp512/COMP512/pa2/comp512p2/comp512st
 	else
 		BASEDIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 	fi
