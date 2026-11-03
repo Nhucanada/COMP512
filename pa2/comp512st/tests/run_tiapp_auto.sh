@@ -33,7 +33,7 @@ export process2=${autotesthost}:402$group
 #export process9=${autotesthost}:409$group
 
 #TODO update these values as needed
-maxmoves=100 interval=100 randseed=xxxxxxxxx
+maxmoves=100 interval=100 randseed=93kewnkqo3n
 #TODO IF (and only if) you want to simulate failures, enable this for corresponding player numbers.
 #export failmode_N=RECEIVEPROPOSE
 #export failmode_N=AFTERSENDVOTE
@@ -41,7 +41,7 @@ maxmoves=100 interval=100 randseed=xxxxxxxxx
 #export failmode_N=AFTERBECOMINGLEADER
 #export failmode_N=AFTERVALUEACCEPT
 #For example this enabled failmode AFTERBECOMINGLEADER for player/process 2 (only one failmode can be set per process). It is important to have the export.
-export failmode_2=AFTERBECOMINGLEADER
+#export failmode_2=AFTERBECOMINGLEADER
 
 # Check if this script is being exectuted on the correct server.
 if [[ $autotesthost != $(hostname) ]]
