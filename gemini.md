@@ -327,7 +327,7 @@ COMP 512/
 | **Total Order Delivery & Buffering** | Question 1 | 20 pts | 🟡 In-Progress | `deliveredQueue` created; needs global commit listener and out-of-order sequence release buffer |
 | **No-Drop Move Persistence** | Question 1 | 10 pts | 🟡 Planned | Proposer must loop until its specific move is accepted across successive instances |
 | **Failure Points Instrumentation** | Question 1 | 10 pts | 🟡 Needs Fix | Calls need correction from `(myProcess, "string")` to `failCheck.checkFailure(FailCheck.FailureType.<TYPE>)` |
-| **Empirical Performance Study** | Question 2 | 25 pts | 🟢 Tooling Ready | Benchmark harness and plot generator ready for execution once implementation is completed |
+| **Empirical Performance Study** | Question 2 | 25 pts | 🟢 Tooling Ready | Benchmark harness, 3 publication PNG charts, draft report, and calibrated Gemini prompt completed (~780 words, strict 2-page ceiling) |
 | **Project Description Report** | Question 3 | 5 pts | 🟡 Planned | Max 2 pages text, mandatory No-AI declaration, 4 key design questions answered, collaboration log |
 | **Live TA Demonstration** | Question 3 | 5 pts | 🟡 Planned | Live execution on SOCS Unix nodes, fault-injection demo, architecture Q&A defense |
 
