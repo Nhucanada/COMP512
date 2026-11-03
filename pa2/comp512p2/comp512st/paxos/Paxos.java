@@ -138,11 +138,9 @@ public class Paxos
 	// synchronised: can only be used by 1 thread at a time
 	private synchronized void handlePaxosMsg (PaxosMessage msg) {
 
-		//TODO: fix
-		failCheck.checkFailure(myProcess, "handlePaxosMessage");
-
 		switch (msg.type) {
 			case "PROPOSE": {
+				failCheck.checkFailure(FailCheck.FailureType.RECEIVEPROPOSE);
 				int inst = msg.instance;
 				int balNum = msg.ballotNum;
 				int currPromise = highestAcceptedBallot.getOrDefault(inst, -1); //get inst, or default to -1
@@ -151,7 +149,6 @@ public class Paxos
 
 				if (balNum > currPromise) {
 					highestPromisedBallot.put(inst, balNum);
-					failCheck.checkFailure(myProcess, "propose"); //TODO
 
 					// promise highest value
 					int accepted = highestAcceptedBallot.getOrDefault(inst, -1);
@@ -163,6 +160,7 @@ public class Paxos
 					//create new PROMISE reply msg
 					PaxosMessage promise = new PaxosMessage("PROMISE", inst, balNum, myProcess, accVal, accepted);
 					gcl.sendMsg(promise, msg.sender);
+					failCheck.checkFailure(FailCheck.FailureType.AFTERSENDVOTE);
 
 				} else {
 					this.logger.info(String.format("[%s] REJECTED PROPOSE for instance %d with ballot %d (already promised ballot %d)",
@@ -201,9 +199,7 @@ public class Paxos
 				if (balNum >= currPromise) {
 					highestPromisedBallot.put(inst, balNum);
 					highestAcceptedBallot.put(inst, balNum);
-					acceptedValues.put(inst, msg.value);
-
-					failCheck.checkFailure(myProcess, "accept_accepted");
+					acceptedValues.put(inst, (Integer) msg.value);
 
 					this.logger.info(String.format("[%s] Accepted value for instance %d, ballot %d. Sending ACCEPTED acknowledgment to %s",
 							myProcess, inst, balNum, msg.sender));
@@ -244,7 +240,6 @@ public class Paxos
 		// This is just a place holder.
 		// Extend this to build whatever Paxos logic you need to make sure the messaging system is total order.
 		// Here you will have to ensure that the CALL BLOCKS, and is returned ONLY when a majority (and immediately upon majority) of processes have accepted the value.
-		failCheck.checkFailure(myProcess, "broadcastTOMsg_entry");
 
 		int instanceToRun;
 		synchronized (this) {
@@ -269,8 +264,6 @@ public class Paxos
 		int localBallotSeq = 0;
 
 		while (running) {
-			failCheck.checkFailure(myProcess, "consensus_loop_start");
-
 			// Generate a unique ballot number
 			localBallotSeq++;
 			int ballotNum = localBallotSeq * 100 + Math.abs(myProcess.hashCode() % 100);
@@ -284,8 +277,7 @@ public class Paxos
 			PaxosMessage proposeMsg = new PaxosMessage("PROPOSE", instance, ballotNum, myProcess, null, -1);
 			this.logger.info(String.format("[%s] Broadcasting PROPOSE for instance %d, ballot %d", myProcess, instance, ballotNum));
 			gcl.broadcastMsg(proposeMsg);
-
-			gcl.broadcastMsg(proposeMsg);
+			failCheck.checkFailure(FailCheck.FailureType.AFTERSENDPROPOSE);
 
 			// Wait for majority promises with a timeout (e.g., 2000ms) to handle retries/livelocks
 			boolean receivedPromises = false;
@@ -302,7 +294,7 @@ public class Paxos
 				continue; // Retry with a higher ballot number
 			}
 
-			failCheck.checkFailure(myProcess, "phase1_completed");
+			failCheck.checkFailure(FailCheck.FailureType.AFTERBECOMINGLEADER);
 			this.logger.info(String.format("[%s] Quorum of PROMISES reached for instance %d, ballot %d", myProcess, instance, ballotNum));
 
 			//2. Send ACCEPT
@@ -334,7 +326,7 @@ public class Paxos
 				continue; // Retry with a higher ballot number
 			}
 
-			failCheck.checkFailure(myProcess, "consensus_reached");
+			failCheck.checkFailure(FailCheck.FailureType.AFTERVALUEACCEPT);
 			this.logger.info(String.format("[%s] Quorum of ACCEPTED acks reached for instance %d, ballot %d", myProcess, instance, ballotNum));
 			activeBallots.remove(instance);
 			return valueToAccept;
@@ -346,7 +338,6 @@ public class Paxos
 	// Messages delivered in ALL the processes in the group should deliver this in the same order.
 
 	public Object acceptTOMsg() throws InterruptedException {
-		failCheck.checkFailure(myProcess, "acceptTOMsg");
 		return deliveredQueue.take();
 	}
 
