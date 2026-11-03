@@ -23,6 +23,8 @@ from pathlib import Path
 
 WORKSPACE_ROOT = Path(__file__).resolve().parents[4]
 PA2_DIR = WORKSPACE_ROOT / "pa2"
+if (PA2_DIR / "comp512p2").exists():
+    PA2_DIR = PA2_DIR / "comp512p2"
 P2_STUDENTS_DIR = WORKSPACE_ROOT / "p2-students"
 JAR_PATH = PA2_DIR / "comp512p2.jar"
 PAXOS_DIR = PA2_DIR / "comp512st" / "paxos"
