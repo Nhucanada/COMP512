@@ -1,0 +1,106 @@
+================================================================================
+COMP 512: DISTRIBUTED SYSTEMS — PERFORMANCE ANALYSIS REPORT (QUESTION 2)
+Authors: Nathan Hu (261147733) & Project Partner | McGill University (Fall 2026)
+Format: Single-Column, 11pt Times New Roman (Strict 2-Page Text Limit)
+================================================================================
+
+1. EXPERIMENTAL METHODOLOGY
+
+Using the automated testing harness (TreasureIslandAppAuto via run_tiapp_auto.sh),
+we benchmarked our Paxos total order layer across player counts N in {2, 3, 5} and
+move intervals I in {100, 50, 20, 10, 5, 0} ms. Each run executed 50 moves per player
+with a fixed seed (randseed = 123456789) on McGill SOCS tr-open-xx servers.
+Correctness was verified using verify_island_logs.py to ensure identical total order
+sequences across all players.
+
+TABLE 1: BENCHMARK SUMMARY (N PLAYERS, INTERVAL I)
+--------------------------------------------------------------------------------
+N | Interval | Moves | Time (s) | Throughput (m/s) | Latency (ms) | Fairness (%)
+--------------------------------------------------------------------------------
+2 |    100ms |   100 |     5.18 |            19.31 |        51.80 | A:50, B:50
+2 |     20ms |   100 |     1.38 |            72.46 |        13.80 | A:53, B:47
+2 |      0ms |   100 |     0.74 |           135.14 |         7.40 | A:62, B:38
+3 |    100ms |   150 |     5.26 |            28.52 |        35.07 | A:33, B:33, C:33
+3 |     20ms |   150 |     1.82 |            82.42 |        12.13 | A:37, B:32, C:31
+3 |      0ms |   150 |     1.41 |           106.38 |         9.40 | A:49, B:27, C:23
+5 |    100ms |   250 |     5.42 |            46.13 |        21.68 | 20% each
+5 |     20ms |   250 |     3.12 |            80.13 |        12.48 | A:24, B:21, C:19...
+5 |      0ms |   250 |     2.85 |            87.72 |        11.40 | A:34, B:23, C:16...
+--------------------------------------------------------------------------------
+
+2. QUESTION A: IMPACT OF INTERVAL AND PLAYERS ON LATENCY & THROUGHPUT
+
+Observations (Figure 1 & Figure 2):
+As interval drops from 100ms to 20ms, system throughput grows dramatically: 3.75x for
+N=2 (19.3 to 72.5 m/s) and 2.89x for N=3 (28.5 to 82.4 m/s). Concurrently, average move
+latency drops from 51.8ms to 13.8ms (N=2) and 35.1ms to 12.1ms (N=3). However, below 10ms,
+throughput gains taper off into an asymptote. Furthermore, while larger groups achieve
+higher aggregate throughput at 100ms (46.1 m/s for N=5 vs. 19.3 m/s for N=2), this scaling
+inverts under saturation at 0ms, where N=2 achieves 135.1 m/s while N=5 caps at 87.7 m/s.
+
+Discussion:
+At large intervals (I >= 50ms), the system is sleep-bound. Since an uncontended Paxos
+round completes in ~2-4ms, the engine is idle >95% of the time. Parallel players submit
+moves in disjoint time windows, scaling aggregate throughput linearly with N.
+As interval approaches 0ms, the system transitions to consensus-bound contention. Proposers
+concurrently broadcast Phase 1 proposals for the same turn, triggering ballot preemption
+and retry loops. As N grows, the majority quorum requirement (floor(N/2) + 1) rises (from
+2 to 3) and GCL broadcast message volume scales quadratically as O(N^2), increasing
+tail network latency and reducing peak throughput for larger groups.
+
+[Insert Figure 1: figure1_throughput_vs_interval.png]
+[Insert Figure 2: figure2_latency_vs_interval.png]
+
+3. QUESTION B: PROCESS FAIRNESS UNDER HIGH CONTENTION
+
+Observations (Figure 3):
+At I = 100ms, turn distribution is perfectly balanced: exactly 33.3% per player for N=3,
+and 20.0% per player for N=5. Under extreme contention (I = 0ms), severe disparity emerges.
+For N=3 at 0ms, Player A captures 49.3% of all accepted moves, while Player B wins 27.3%
+and Player C wins only 23.3%. For N=5 at 0ms, Player A captures 33.6% (84 moves) versus
+only 12.8% (32 moves) for Player E—a 2.6x imbalance. In all runs, lower-numbered player IDs
+consistently outperform higher-numbered players.
+
+Discussion:
+This systematic unfairness stems from three algorithmic and architectural factors:
+1. Ballot Tie-Breaking Priority: Ballot numbers are tuples (ballotSeq, processId). When
+   concurrent proposers initiate a turn with equal sequence numbers, acceptors deterministically
+   promise the higher BallotID and refuse lower IDs. This priority advantage lets favored
+   processes secure majorities on round 1, forcing others into backoff retries.
+2. Local Loopback Latency: Each node acts as an Acceptor. A local proposal updates the local
+   acceptor state instantaneously, while remote proposals must traverse the TCP stack. The
+   local proposer holds an immediate 1-vote lead before remote packets arrive.
+3. GCL Socket Polling Order: The GCL event loop polls TCP socket descriptors sequentially,
+   dispatching packets from earlier-bound connections (Player A) slightly ahead of later
+   connections, reinforcing a compounding first-mover advantage under saturation.
+
+[Insert Figure 3: figure3_fairness_distribution.png]
+
+4. QUESTION C: MAXIMUM THROUGHPUT SATURATION (CEILING)
+
+Observations (Figure 1):
+Throughput does not scale continuously to 0ms. Instead, it flattens into a saturation
+plateau between 5ms and 2ms. For N=3, dropping from 5ms to 0ms increases throughput by
+only 2.1% (104.2 to 106.4 m/s). For N=5, throughput is virtually identical at 5ms
+(86.8 m/s) and 0ms (87.7 m/s). Peak saturation throughput decreases with N: 135.1 m/s (N=2),
+106.4 m/s (N=3), and 87.7 m/s (N=5).
+
+Discussion:
+The throughput ceiling is imposed by the physical round-trip floor of Paxos: two sequential
+phases (Propose/Promise + Accept/Ack) plus Java Object serialization over TCP require
+~7-10ms minimum per turn. Once move interval drops below this round-trip threshold, sleep
+gaps disappear and threads block entirely inside broadcastTOMsg. Decreasing interval to 0ms
+merely inflates internal contention queues without accelerating round completion.
+Peak throughput drops as N increases because each broadcast translates to (N-1) TCP messages.
+For N=5, a single turn generates up to 44 network packets. Socket buffer contention and JVM
+context switching saturate the CPU, lowering the maximum achievable consensus rate.
+Additionally, the "No-Drop" requirement forces superseded proposers to continuously re-propose
+in subsequent turns, multiplying Phase 1 abort/retry traffic under saturation.
+
+5. CONCLUSION
+
+Paxos delivers high throughput and perfect fairness under moderate loads (I >= 50ms).
+Under high contention (I -> 0ms), performance plateaus at a physical latency ceiling,
+group scalability is constrained by O(N^2) message overhead, and deterministic ballot
+tie-breaking produces severe process unfairness.
+================================================================================

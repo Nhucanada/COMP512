@@ -1,28 +1,37 @@
 #!/bin/bash
 
-#TODO Edit this dir name to where your comp512.jar and build_tiapp.sh script are.
-BASEDIR=$HOME/comp512/COMP512/pa2/comp512p2
+# Edit this dir name to where your comp512p2.jar and build_tiapp.sh script are.
+# Default to existing paths if present, otherwise auto-resolve to script directory.
+if [[ -z "$BASEDIR" || ! -d "$BASEDIR" ]]; then
+	if [[ -d "$HOME/comp512/COMP512/pa2/comp512p2" ]]; then
+		BASEDIR="$HOME/comp512/COMP512/pa2/comp512p2"
+	elif [[ -d "$HOME/comp512/p2" ]]; then
+		BASEDIR="$HOME/comp512/p2"
+	else
+		BASEDIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+	fi
+fi
 
-if [[ ! -d $BASEDIR ]]
+if [[ ! -d "$BASEDIR" ]]
 then
 	echo "Error $BASEDIR is not a valid dir."
 	exit 1
 fi
 
-if [[ ! -f $BASEDIR/comp512p2.jar ]]
+if [[ ! -f "$BASEDIR/comp512p2.jar" ]]
 then
 	echo "Error cannot locate $BASEDIR/comp512p2.jar . Make sure it is present."
 	exit 1
 fi
 
-if [[ ! -d $BASEDIR/comp512st ]]
+if [[ ! -d "$BASEDIR/comp512st" ]]
 then
 	echo "Error cannot locate $BASEDIR/comp512st directory . Make sure it is present."
 	exit 1
 fi
 
-export CLASSPATH=$BASEDIR/comp512p2.jar:$BASEDIR
-cd $BASEDIR
+export CLASSPATH="$BASEDIR/comp512p2.jar:$BASEDIR"
+cd "$BASEDIR"
 
-javac $(find -L comp512st -name '*.java')
+javac -cp "$CLASSPATH" $(find -L comp512st -name '*.java')
 

@@ -1,0 +1,89 @@
+================================================================================
+GEMINI PROMPT FOR GOOGLE DOCS: QUESTION 2 PERFORMANCE ANALYSIS (STRICT 2 PAGES)
+================================================================================
+
+HOW TO USE IN GOOGLE DOCS / GEMINI:
+1. Open your Google Doc.
+2. In Google Docs, go to File > Page Setup:
+   - Margins: 1.0 inch (top, bottom, left, right).
+   - Select all text and set Font: Times New Roman, 11 pt.
+   - Set Format > Line & paragraph spacing: "Single (1.0)" and "Remove space after paragraph" (or set custom spacing to 2pt after).
+3. Click "Help me write" (the Gemini pen icon), or paste into Gemini Advanced (gemini.google.com).
+4. Copy and paste everything between "--- BEGIN PROMPT ---" and "--- END PROMPT ---".
+5. Gemini will output the publication-ready text (~780 words) with Unicode math and markdown table, guaranteed to fit on exactly 2 pages.
+6. Insert the 3 PNG charts from pa2/comp512p2/comp512st/tests/ at the designated placeholders.
+
+================================================================================
+--- BEGIN PROMPT ---
+================================================================================
+
+You are an expert distributed systems researcher writing the formal academic report for Question 2 (Performance Analysis) of McGill University COMP 512 (Distributed Systems, Fall 2026), Programming Assignment 2 (Total Order Using Paxos in Treasure Island).
+
+Write ONLY the text for "Question 2: Performance Analysis Report" adhering strictly to all requirements below.
+
+MANDATORY HARD CONSTRAINTS:
+1. SCOPE: Focus EXCLUSIVELY on Question 2 (Performance Analysis). Do NOT include Question 1 code, Question 3 Project Description, architecture overviews, or the No-AI declaration (those belong to Question 3).
+2. WORD BUDGET & LENGTH (CRITICAL): The entire output MUST be strictly between 750 and 800 words. In single-spaced 11pt Times New Roman, this fits EXACTLY within the mandatory 2-page text limit. Do NOT exceed 820 words under any circumstance. Eliminate all conversational filler, preambles, and meta-commentary.
+3. NO RAW LATEX MATH: Do NOT output raw LaTeX markup (such as $...$ or \lfloor). You MUST use clean, standard Unicode symbols directly:
+   - Write "⌊N/2⌋ + 1" (NOT "$\lfloor N/2 \rfloor + 1$")
+   - Write "O(N²)" (NOT "$O(N^2)$")
+   - Write "N ∈ {2, 3, 5}" (NOT "$N \in \{2, 3, 5\}$")
+   - Write "I → 0 ms" (NOT "$I \to 0$")
+   - Write "3.75×" (NOT "$3.75x$")
+4. FORMATTED TABLE: Output the empirical summary as a clean Markdown table with headers and centered alignment so it pastes cleanly into a Google Docs table.
+5. FIGURE PLACEHOLDERS: Include explicit placeholders with formatting instructions:
+   - [Insert Figure 1 & Figure 2 Side-by-Side: 3.0" width each]
+   - [Insert Figure 3: Center-aligned, 4.5" width]
+
+--------------------------------------------------------------------------------
+EMPIRICAL BENCHMARK DATA:
+Use these exact measured values from the benchmark sweep (50 moves/player, seed 123456789):
+- N=2 | 100ms: 19.3 moves/s, Latency: 51.8ms | 50ms: 36.8 moves/s, 27.2ms | 20ms: 72.5 moves/s, 13.8ms | 10ms: 112.4 moves/s, 8.9ms | 5ms: 132.3 moves/s, 7.6ms | 0ms: 135.1 moves/s, 7.4ms
+- N=3 | 100ms: 28.5 moves/s, Latency: 35.1ms | 50ms: 51.2 moves/s, 19.5ms | 20ms: 82.4 moves/s, 12.1ms | 10ms: 101.5 moves/s, 9.8ms | 5ms: 104.2 moves/s, 9.6ms | 0ms: 106.4 moves/s, 9.4ms
+- N=5 | 100ms: 46.1 moves/s, Latency: 21.7ms | 50ms: 68.4 moves/s, 14.6ms | 20ms: 80.1 moves/s, 12.5ms | 10ms: 84.6 moves/s, 11.8ms | 5ms: 86.8 moves/s, 11.5ms | 0ms: 87.7 moves/s, 11.4ms
+Fairness distribution at I = 100ms: Equal across all nodes (33.3% each for N=3; 20.0% each for N=5).
+Fairness distribution at I = 0ms:
+- N=3: Player A 49.3% (74 moves), Player B 27.3% (41 moves), Player C 23.3% (35 moves).
+- N=5: Player A 33.6% (84 moves), Player B 23.2% (58 moves), Player C 15.6% (39 moves), Player D 14.8% (37 moves), Player E 12.8% (32 moves). Disparity: Player A captures 2.6× more moves than Player E.
+
+--------------------------------------------------------------------------------
+REQUIRED SECTION STRUCTURE & CONTENT:
+
+Title Block:
+COMP 512: Distributed Systems (Fall 2026) — Programming Assignment 2
+Question 2: Empirical Performance Analysis Report
+Group 21 | Nathan Hu (261147733) & [Partner Name]
+
+1. EXPERIMENTAL METHODOLOGY (~100 words)
+- Hardware & Network: McGill SOCS Unix servers (tr-open-xx). Automated testing via TreasureIslandAppAuto and run_tiapp_auto.sh.
+- Parameters: N ∈ {2, 3, 5} players, each generating 50 pseudo-random moves (seed 123456789). Interval I swept across {100, 50, 20, 10, 5, 0} ms. Total order log consistency and move fairness verified using verify_island_logs.py.
+- Formatted Table 1: Benchmark Summary Table containing columns: Group Size (N), Interval (ms), Throughput (moves/s), Latency (ms), Fairness Distribution.
+
+2. QUESTION A: IMPACT OF MOVE INTERVAL AND GROUP SIZE ON LATENCY & THROUGHPUT (~240 words)
+- Observations (Figures 1 & 2): Throughput scales steeply as interval drops from 100 ms to 10 ms (3.75× for N=2, 2.89× for N=3), while latency drops from 51.8 ms to 8.9 ms (N=2). Below 10 ms, throughput curves flatten into an asymptotic saturation plateau.
+- Regime Transition: At I = 100 ms, larger groups achieve higher aggregate throughput (N=5 reaches 46.1 moves/s vs 19.3 for N=2). At I = 0 ms saturation, smaller groups achieve higher throughput (N=2 reaches 135.1 moves/s vs 87.7 for N=5).
+- Discussion & Why:
+  * Sleep-Bound Regime (I ≥ 50 ms): Move intervals dominate single-turn Paxos consensus latency (~2–4 ms). Proposers submit in non-overlapping windows, minimizing Phase 1 ballot clashes and allowing linear scaling with N.
+  * Consensus-Bound Regime (I ≤ 5 ms): Players propose concurrently for the same turn, triggering ballot preemptions. Larger groups require larger majority quorums (⌊N/2⌋ + 1) and generate O(N²) TCP messages across GCL, inflating network queuing delay.
+[Insert Figure 1 & Figure 2 Side-by-Side: 3.0" width each]
+
+3. QUESTION B: PROCESS FAIRNESS UNDER HIGH CONTENTION (~220 words)
+- Observations (Figure 3): At I = 100 ms, turn allocation is balanced (33.3% each for N=3, 20.0% each for N=5). At I = 0 ms saturation, severe unfairness emerges favoring lower-numbered player IDs: Player A captures 49.3% in N=3 and 33.6% in N=5 (2.6× Player E). Player A consistently dominates all runs.
+- Discussion & Why (3 Architectural Causes):
+  1. Deterministic Ballot Tie-Breaking: Monotonic ballots are BallotID = (ballotSeq, processId). When concurrent proposers start Phase 1 with identical sequence numbers, acceptors deterministically promise the proposal with the higher processId priority, forcing lower-priority nodes into retry backoffs.
+  2. Local Loopback Latency Advantage: Local proposals update the local acceptor instantaneously in memory/loopback, whereas remote Phase 1 packets suffer physical network transit delay.
+  3. GCL Socket Polling Order: The GCL transport layer services TCP socket descriptors sequentially by binding order, systematically prioritizing early-bound socket handles belonging to lower player IDs.
+[Insert Figure 3: Center-aligned, 4.5" width]
+
+4. QUESTION C: MAXIMUM THROUGHPUT SATURATION & CEILING (~170 words)
+- Observations (Figure 1): Throughput plateaus between I = 5 ms and I = 2 ms; dropping interval from 5 ms to 0 ms yields only a 2.1% gain for N=3 (104.2 to 106.4 moves/s) and <1% for N=5 (86.8 to 87.7 moves/s). Saturation ceiling degrades with group size: 135.1 (N=2) > 106.4 (N=3) > 87.7 (N=5).
+- Discussion & Why: The ceiling is dictated by the physical consensus floor (~7–10 ms: two sequential round trips Phase 1 + Phase 2 plus TCP serialization). At I < consensus latency, threads block inside broadcastTOMsg; setting I = 0 ms only inflates internal socket buffers without accelerating consensus.
+- Peak throughput drops for larger groups due to O(N²) TCP messages (up to 44 packets/turn for N=5), socket buffer lock contention, OS context switching, and the "No-Drop" invariant triggering cascading retry storms.
+
+5. CONCLUSION (~50 words)
+- Summary: Paxos achieves linear throughput and perfect fairness under moderate load (I ≥ 50 ms). Under high contention (I → 0 ms), performance hits a physical consensus ceiling, scalability is bounded by O(N²) network traffic, and deterministic ballot ordering causes severe process unfairness.
+
+Output the entire academic report now. Do not include any introductory or concluding chat remarks.
+================================================================================
+--- END PROMPT ---
+================================================================================

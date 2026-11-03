@@ -304,21 +304,30 @@ COMP 512/
 
 ## 🎯 Implementation Status & Scope Matrix
 
-### PA2 Implementation Status Matrix (Active Milestone)
+### PA2 Implementation Status Matrix (Active Milestone: Rhea's Codebase Selected)
+
+> **Active Implementation Path**: [`pa2/comp512p2/comp512st/paxos/Paxos.java`](file:///Users/nathanhu/downloads/COMP%20512/pa2/comp512p2/comp512st/paxos/Paxos.java) (Branch: `pa2-testing`, branched off `rhea-pa2`)  
+> **Testing Suite Guide**: [`pa2/comp512p2/TESTING_GUIDE.md`](file:///Users/nathanhu/downloads/COMP%20512/pa2/comp512p2/TESTING_GUIDE.md)  
+> **Initial Architecture**: `PaxosMessage` envelope, `BallotContext` with `CountDownLatch`es, background `listenerThread` (`listenLoop`), `ConcurrentHashMap` instance state, and `deliveredQueue` buffer.
 
 | Component / Requirement | Category | Points | Status | Details & Invariants |
 | :--- | :--- | :--- | :--- | :--- |
-| **Workspace & Starter Setup** | Plumbing | — | 🟢 Completed | `pa2/` and `p2-students/` structured cleanly; relative `BASEDIR` and space-quoting fixes applied to scripts |
-| **Compilation with `comp512p2.jar`** | Plumbing | — | 🟢 Completed | `./build_tiapp.sh` compiles cleanly with zero errors |
-| **Automated Verification Harness** | Plumbing | — | 🟢 Completed | [`verify_pa2.py`](file:///Users/nathanhu/downloads/COMP%20512/.agents/skills/comp512-verifier/scripts/verify_pa2.py) verifies layout, javac, visibility, GCL IPC, and fail points |
-| **Submission Packager for PA2** | Plumbing | — | 🟢 Completed | [`package_submission.py --assignment PA2`](file:///Users/nathanhu/downloads/COMP%20512/.agents/skills/submission-packager/scripts/package_submission.py) bundles source, scripts, docs, and validates sandbox build |
-| **Package Visibility Enforcement** | Q1 Spec | — | 🟢 Enforced | Only `Paxos.java` is public; helper classes must be package-private |
-| **GCL IPC Invariant** | Q1 Spec | — | 🟢 Enforced | All IPC restricted to GCL (`sendMsg`, `broadcastMsg`, `multicastMsg`); no RMI or raw sockets |
-| **Paxos Proposer / Acceptor Core** | Question 1 | 25 pts | 🟡 Starter | Needs full Paxos Phase 1 (propose/promise) & Phase 2 (accept/ack) with monotonic BallotIDs |
-| **Total Order Delivery & Buffering** | Question 1 | 20 pts | 🟡 Starter | `acceptTOMsg()` must buffer out-of-order turns and deliver strictly sequentially |
-| **No-Drop Move Persistence** | Question 1 | 10 pts | 🟡 Planned | Failed proposals at turn $k$ must automatically carry forward to turn $k+1$ |
-| **Failure Points Instrumentation** | Question 1 | 10 pts | 🟡 Instrumented | Need hooks for `RECEIVEPROPOSE`, `AFTERSENDVOTE`, `AFTERSENDPROPOSE`, `AFTERBECOMINGLEADER`, `AFTERVALUEACCEPT` |
-| **Empirical Performance Study** | Question 2 | 25 pts | 🟡 Planned | Parameter sweeps with `TreasureIslandAppAuto` across intervals ($100\text{ms} \to 0\text{ms}$) & players (1–9) |
+| **Workspace & Starter Setup** | Plumbing | — | 🟢 Completed | `pa2/comp512p2/` established as active development root; portable `BASEDIR` and path quoting supported |
+| **Compilation with `comp512p2.jar`** | Plumbing | — | 🔴 Needs Fixes | **14 compilation errors** in Rhea's code (`Set`/`HashSet` imports, `pmsg` typo, `Map<Integer,Object>` generic type, `FailCheck` signature) |
+| **Automated Verification Harness** | Plumbing | — | 🟢 Completed | [`verify_pa2.py`](file:///Users/nathanhu/downloads/COMP%20512/.agents/skills/comp512-verifier/scripts/verify_pa2.py) audits `pa2/comp512p2/`, checking visibility, javac, GCL, and fail points |
+| **Submission Packager for PA2** | Plumbing | — | 🟢 Completed | [`package_submission.py --assignment PA2`](file:///Users/nathanhu/downloads/COMP%20512/.agents/skills/submission-packager/scripts/package_submission.py) bundles `pa2/comp512p2/` source and runs sandbox verification |
+| **Automated Log Consistency Auditor** | Testing | — | 🟢 Completed | [`verify_island_logs.py`](file:///Users/nathanhu/downloads/COMP%20512/pa2/comp512p2/comp512st/tests/verify_island_logs.py) audits total order agreement across logs & computes fairness stats |
+| **Automated Fault Tolerance Suite** | Testing | — | 🟢 Completed | [`test_fault_tolerance.py`](file:///Users/nathanhu/downloads/COMP%20512/pa2/comp512p2/comp512st/tests/test_fault_tolerance.py) runs regression across all 5 fail points (`FRP`, `FSV`, `FSP`, `FOL`, `FMV`) + `FI` |
+| **Automated Benchmark Runner** | Testing | — | 🟢 Completed | [`benchmark_runner.py`](file:///Users/nathanhu/downloads/COMP%20512/pa2/comp512p2/comp512st/tests/benchmark_runner.py) automates Question 2 sweeps across intervals (100–0ms) and players (2–9) |
+| **Performance Chart Generator** | Testing | — | 🟢 Completed | [`generate_performance_charts.py`](file:///Users/nathanhu/downloads/COMP%20512/pa2/comp512p2/comp512st/tests/generate_performance_charts.py) generates 3 high-res publication figures for Q2 report |
+| **Package Visibility Enforcement** | Q1 Spec | — | 🟢 Enforced | Only `Paxos.java` is public; `PaxosMessage` and `BallotContext` are package-private |
+| **GCL IPC Invariant** | Q1 Spec | — | 🟡 Needs Fix | GCL messaging used; accidental `import java.net.ServerSocket;` must be removed to avoid banned IPC flag |
+| **Paxos Message Architecture** | Question 1 | — | 🟢 Implemented | `PaxosMessage` wrapper with `type`, `instance`, `ballotNum`, `sender`, `value`, `acceptedBal` |
+| **Proposer / Acceptor Phase 1 & 2** | Question 1 | 25 pts | 🟡 In-Progress | Acceptor PROPOSE & ACCEPT handlers drafted; Proposer response collection & latches need completion |
+| **Total Order Delivery & Buffering** | Question 1 | 20 pts | 🟡 In-Progress | `deliveredQueue` created; needs global commit listener and out-of-order sequence release buffer |
+| **No-Drop Move Persistence** | Question 1 | 10 pts | 🟡 Planned | Proposer must loop until its specific move is accepted across successive instances |
+| **Failure Points Instrumentation** | Question 1 | 10 pts | 🟡 Needs Fix | Calls need correction from `(myProcess, "string")` to `failCheck.checkFailure(FailCheck.FailureType.<TYPE>)` |
+| **Empirical Performance Study** | Question 2 | 25 pts | 🟢 Tooling Ready | Benchmark harness, 3 publication PNG charts, draft report, and calibrated Gemini prompt completed (~780 words, strict 2-page ceiling) |
 | **Project Description Report** | Question 3 | 5 pts | 🟡 Planned | Max 2 pages text, mandatory No-AI declaration, 4 key design questions answered, collaboration log |
 | **Live TA Demonstration** | Question 3 | 5 pts | 🟡 Planned | Live execution on SOCS Unix nodes, fault-injection demo, architecture Q&A defense |
 

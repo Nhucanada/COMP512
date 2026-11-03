@@ -13,9 +13,8 @@ fi
 #TODO update your group number here in place of XX
 group=21
 
-#TODO Optional
-# this will always generate the same game island. Change the last digits to any number if you want to change it to a different island map. Otherwise leave it as it is.
-gameid=game-$group-99
+# Hostname configuration: default to local hostname or override with AUTOTESTHOST
+export autotesthost=${AUTOTESTHOST:-$(hostname)}
 
 #TODO edit these entries to put the name of the server that you are using and the associated ports.
 # Remember to start the script from this host
@@ -89,7 +88,7 @@ for process in $(echo $processgroup | sed -e 's/,/ /g')
 do
 	failmode=$(env | grep '^failmode_'${playernum}'=' | sed -e 's/.*=//')
 	echo java comp512st.tests.TreasureIslandAppAuto $process $processgroup $gameid $numplayers $playernum $maxmoves $interval $randseed$playernum $failmode '>' $gameid-$playernum-display.log
-	java comp512st.tests.TreasureIslandAppAuto $process $processgroup $gameid $numplayers $playernum $maxmoves $interval $randseed$playernum $failmode  > $gameid-$playernum-display.log 2>&1 &
+	java -cp "$CLASSPATH" comp512st.tests.TreasureIslandAppAuto $process $processgroup $gameid $numplayers $playernum $maxmoves $interval $randseed$playernum $failmode  > $gameid-$playernum-display.log 2>&1 &
 	playernum=$(expr $playernum + 1);
 done
 wait

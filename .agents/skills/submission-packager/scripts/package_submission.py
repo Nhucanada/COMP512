@@ -71,6 +71,9 @@ def package_submission(output_zip=None, assignment="PA1"):
         if not pa_dir.exists():
             pa_dir = root_dir
 
+    if assignment_upper == "PA2" and (pa_dir / "comp512p2").exists():
+        pa_dir = pa_dir / "comp512p2"
+
     if not output_zip:
         output_zip = root_dir / f"COMP512_{assignment_upper}_Submission.zip"
     else:
