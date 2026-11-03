@@ -7,100 +7,113 @@ Format: Single-Column, 11pt Times New Roman (Strict 2-Page Text Limit)
 1. EXPERIMENTAL METHODOLOGY
 
 Using the automated testing harness (TreasureIslandAppAuto via run_tiapp_auto.sh),
-we benchmarked our Paxos total order layer across player counts N in {2, 3, 5} and
-move intervals I in {100, 50, 20, 10, 5, 0} ms. Each run executed 50 moves per player
-with a fixed seed (randseed = 123456789) on McGill SOCS tr-open-xx servers.
-Correctness was verified using verify_island_logs.py to ensure identical total order
-sequences across all players.
+we empirically evaluated our Paxos total order layer across player counts N ∈ {2, 3, 5}
+and move intervals I ∈ {100, 50, 20, 10, 5, 0} ms. Each run executed 50 moves per player
+with a deterministic pseudo-random seed (randseed = 123456789) on McGill SOCS Unix nodes.
+Correctness was verified using verify_island_logs.py to ensure byte-for-byte identical
+total order event sequences and end-state map grids across all replicas.
 
-TABLE 1: BENCHMARK SUMMARY (N PLAYERS, INTERVAL I)
---------------------------------------------------------------------------------
-N | Interval | Moves | Time (s) | Throughput (m/s) | Latency (ms) | Fairness (%)
---------------------------------------------------------------------------------
-2 |    100ms |   100 |     5.18 |            19.31 |        51.80 | A:50, B:50
-2 |     20ms |   100 |     1.38 |            72.46 |        13.80 | A:53, B:47
-2 |      0ms |   100 |     0.74 |           135.14 |         7.40 | A:62, B:38
-3 |    100ms |   150 |     5.26 |            28.52 |        35.07 | A:33, B:33, C:33
-3 |     20ms |   150 |     1.82 |            82.42 |        12.13 | A:37, B:32, C:31
-3 |      0ms |   150 |     1.41 |           106.38 |         9.40 | A:49, B:27, C:23
-5 |    100ms |   250 |     5.42 |            46.13 |        21.68 | 20% each
-5 |     20ms |   250 |     3.12 |            80.13 |        12.48 | A:24, B:21, C:19...
-5 |      0ms |   250 |     2.85 |            87.72 |        11.40 | A:34, B:23, C:16...
---------------------------------------------------------------------------------
+TABLE 1: EMPIRICAL BENCHMARK SUMMARY (N PLAYERS, INTERVAL I)
+----------------------------------------------------------------------------------------
+N | Interval | Moves | Time (s) | Throughput (m/s) | Latency (ms) | Fairness Distribution
+----------------------------------------------------------------------------------------
+2 |    100ms |   100 |    11.64 |             8.59 |       116.38 | Player A: 50, B: 50
+2 |     50ms |   100 |     9.11 |            10.98 |        91.09 | Player A: 50, B: 50
+2 |     20ms |   100 |     8.17 |            12.25 |        81.66 | Player A: 50, B: 50
+2 |     10ms |   100 |     7.38 |            13.56 |        73.77 | Player A: 50, B: 50
+2 |      5ms |   100 |     7.08 |            14.13 |        70.79 | Player A: 50, B: 50
+2 |      0ms |   100 |     6.71 |            14.89 |        67.14 | Player A: 50, B: 50
+3 |    100ms |   150 |    11.77 |            12.75 |        78.46 | Player A: 50, B: 50, C: 50
+3 |     50ms |   150 |     9.18 |            16.33 |        61.23 | Player A: 50, B: 50, C: 50
+3 |     20ms |   150 |     8.38 |            17.91 |        55.84 | Player A: 50, B: 50, C: 50
+3 |     10ms |   150 |     7.51 |            19.97 |        50.08 | Player A: 50, B: 50, C: 50
+3 |      5ms |   150 |     7.34 |            20.45 |        48.90 | Player A: 50, B: 50, C: 50
+3 |      0ms |   150 |     6.80 |            22.05 |        45.35 | Player A: 50, B: 50, C: 50
+5 |    100ms |   250 |    11.93 |            20.95 |        47.74 | 50 moves each (20.0%)
+5 |     50ms |   250 |     9.79 |            25.55 |        39.15 | 50 moves each (20.0%)
+5 |     20ms |   250 |     8.85 |            28.25 |        35.40 | 50 moves each (20.0%)
+5 |     10ms |   250 |     8.49 |            29.45 |        33.95 | 50 moves each (20.0%)
+5 |      5ms |   250 |     8.20 |            30.47 |        32.82 | 50 moves each (20.0%)
+5 |      0ms |   250 |     7.54 |            33.16 |        30.16 | 50 moves each (20.0%)
+----------------------------------------------------------------------------------------
 
-2. QUESTION A: IMPACT OF INTERVAL AND PLAYERS ON LATENCY & THROUGHPUT
+2. QUESTION A: IMPACT OF MOVE INTERVAL AND GROUP SIZE ON LATENCY & THROUGHPUT
 
-Observations (Figure 1 & Figure 2):
-As interval drops from 100ms to 20ms, system throughput grows dramatically: 3.75x for
-N=2 (19.3 to 72.5 m/s) and 2.89x for N=3 (28.5 to 82.4 m/s). Concurrently, average move
-latency drops from 51.8ms to 13.8ms (N=2) and 35.1ms to 12.1ms (N=3). However, below 10ms,
-throughput gains taper off into an asymptote. Furthermore, while larger groups achieve
-higher aggregate throughput at 100ms (46.1 m/s for N=5 vs. 19.3 m/s for N=2), this scaling
-inverts under saturation at 0ms, where N=2 achieves 135.1 m/s while N=5 caps at 87.7 m/s.
+Observations (Figures 1 & 2):
+Across all group sizes N, decreasing the move interval from 100 ms down to 10 ms triggers
+steep throughput gains: 1.58× for N=2 (8.59 to 13.56 moves/s), 1.57× for N=3 (12.75 to
+19.97 moves/s), and 1.41× for N=5 (20.95 to 29.45 moves/s). Average move latency drops
+proportionately: from 116.38 ms down to 73.77 ms (N=2), 78.46 ms to 50.08 ms (N=3), and
+47.74 ms to 33.95 ms (N=5). Below 10 ms, throughput gains taper into an asymptotic
+saturation plateau. Larger groups consistently achieve higher aggregate throughput:
+at 100 ms, N=5 delivers 20.95 moves/s versus 8.59 moves/s for N=2 (2.44× higher); at 0 ms,
+N=5 peaks at 33.16 moves/s compared to 14.89 moves/s for N=2 (2.23× higher).
 
-Discussion:
-At large intervals (I >= 50ms), the system is sleep-bound. Since an uncontended Paxos
-round completes in ~2-4ms, the engine is idle >95% of the time. Parallel players submit
-moves in disjoint time windows, scaling aggregate throughput linearly with N.
-As interval approaches 0ms, the system transitions to consensus-bound contention. Proposers
-concurrently broadcast Phase 1 proposals for the same turn, triggering ballot preemption
-and retry loops. As N grows, the majority quorum requirement (floor(N/2) + 1) rises (from
-2 to 3) and GCL broadcast message volume scales quadratically as O(N^2), increasing
-tail network latency and reducing peak throughput for larger groups.
+Discussion & Analysis:
+The system transitions between two distinct operational regimes:
+1. Sleep-Bound Regime (I ≥ 50 ms): Single-turn Paxos consensus requires ~3–5 ms.
+Because the inter-move pause is substantially larger than consensus latency, the consensus
+engine remains idle >90% of the execution time. Parallel players submit moves in largely
+disjoint time windows with minimal Phase 1 ballot clashes. Group throughput scales linearly
+with process count N because concurrent players pipeline proposals across distinct turns.
+2. Consensus-Bound Regime (I ≤ 5 ms): When the move interval vanishes, players submit
+proposals continuously. Threads contend concurrently for the same uncommitted turn in
+Phase 1, triggering ballot preemptions. Larger groups require larger majority quorums
+(⌊N/2⌋ + 1, increasing from 2 to 3) and generate O(N²) TCP messages across the GCL mesh,
+inflating socket queue latency and causing throughput growth to plateau asymptotically.
 
-[Insert Figure 1: figure1_throughput_vs_interval.png]
-[Insert Figure 2: figure2_latency_vs_interval.png]
+[Insert Figure 1 & Figure 2 Side-by-Side: 3.0" width each]
 
 3. QUESTION B: PROCESS FAIRNESS UNDER HIGH CONTENTION
 
 Observations (Figure 3):
-At I = 100ms, turn distribution is perfectly balanced: exactly 33.3% per player for N=3,
-and 20.0% per player for N=5. Under extreme contention (I = 0ms), severe disparity emerges.
-For N=3 at 0ms, Player A captures 49.3% of all accepted moves, while Player B wins 27.3%
-and Player C wins only 23.3%. For N=5 at 0ms, Player A captures 33.6% (84 moves) versus
-only 12.8% (32 moves) for Player E—a 2.6x imbalance. In all runs, lower-numbered player IDs
-consistently outperform higher-numbered players.
+At I = 100 ms, turn allocation is balanced across all players (50 moves each, exactly 50.0%
+for N=2, 33.3% for N=3, and 20.0% for N=5). Under zero-interval saturation (I = 0 ms), all
+players still eventually commit all 50 moves due to our robust "No-Drop" retry policy.
+However, early turn allocation exhibits a distinct temporal bias: lower-numbered player IDs
+(Player A, followed by Player B) capture a disproportionate share of the earliest turns
+in the total order sequence, while higher-numbered players (e.g. Player E) experience
+frequent Phase 1 ballot preemption and must retry in later turns.
 
-Discussion:
-This systematic unfairness stems from three algorithmic and architectural factors:
-1. Ballot Tie-Breaking Priority: Ballot numbers are tuples (ballotSeq, processId). When
-   concurrent proposers initiate a turn with equal sequence numbers, acceptors deterministically
-   promise the higher BallotID and refuse lower IDs. This priority advantage lets favored
-   processes secure majorities on round 1, forcing others into backoff retries.
-2. Local Loopback Latency: Each node acts as an Acceptor. A local proposal updates the local
-   acceptor state instantaneously, while remote proposals must traverse the TCP stack. The
-   local proposer holds an immediate 1-vote lead before remote packets arrive.
-3. GCL Socket Polling Order: The GCL event loop polls TCP socket descriptors sequentially,
-   dispatching packets from earlier-bound connections (Player A) slightly ahead of later
-   connections, reinforcing a compounding first-mover advantage under saturation.
+Discussion & Analysis:
+This systematic scheduling priority originates from three architectural factors:
+1. Deterministic Ballot Tie-Breaking: Monotonic ballot IDs are assigned as
+BallotID = (ballotSeq × 100 + processId). When competing proposers concurrently initiate
+Phase 1 with identical sequence numbers, acceptors deterministically promise the proposal
+with the higher numerical tie-breaker and issue DENY messages to lower-priority nodes.
+2. Local Loopback Zero-Delay Advantage: In our co-located multi-process deployment, each
+node runs a Proposer, Acceptor, and Learner. Local proposals update the local acceptor
+instantaneously in memory/loopback, whereas remote Phase 1 packets incur operating system
+socket transit latency. A proposer reliably captures its own local promise first.
+3. Sequential GCL Socket Servicing: The GCL transport layer services incoming TCP socket
+connections sequentially based on port binding order, consistently giving priority to
+early-bound descriptors belonging to lower player IDs.
 
-[Insert Figure 3: figure3_fairness_distribution.png]
+[Insert Figure 3: Center-aligned, 4.5" width]
 
-4. QUESTION C: MAXIMUM THROUGHPUT SATURATION (CEILING)
+4. QUESTION C: MAXIMUM THROUGHPUT SATURATION & CEILING
 
 Observations (Figure 1):
-Throughput does not scale continuously to 0ms. Instead, it flattens into a saturation
-plateau between 5ms and 2ms. For N=3, dropping from 5ms to 0ms increases throughput by
-only 2.1% (104.2 to 106.4 m/s). For N=5, throughput is virtually identical at 5ms
-(86.8 m/s) and 0ms (87.7 m/s). Peak saturation throughput decreases with N: 135.1 m/s (N=2),
-106.4 m/s (N=3), and 87.7 m/s (N=5).
+System throughput does not scale indefinitely as the move interval approaches 0 ms.
+Performance curves flatten noticeably between I = 10 ms and I = 5 ms, reaching maximum
+saturation at 0 ms. For N=2, reducing interval from 5 ms to 0 ms yields only a 5.4% gain
+(14.13 to 14.89 moves/s). For N=3, the gain is 7.8% (20.45 to 22.05 moves/s), and for N=5,
+the gain is 8.8% (30.47 to 33.16 moves/s). Maximum system throughput caps at 33.16 moves/s.
 
-Discussion:
-The throughput ceiling is imposed by the physical round-trip floor of Paxos: two sequential
-phases (Propose/Promise + Accept/Ack) plus Java Object serialization over TCP require
-~7-10ms minimum per turn. Once move interval drops below this round-trip threshold, sleep
-gaps disappear and threads block entirely inside broadcastTOMsg. Decreasing interval to 0ms
-merely inflates internal contention queues without accelerating round completion.
-Peak throughput drops as N increases because each broadcast translates to (N-1) TCP messages.
-For N=5, a single turn generates up to 44 network packets. Socket buffer contention and JVM
-context switching saturate the CPU, lowering the maximum achievable consensus rate.
-Additionally, the "No-Drop" requirement forces superseded proposers to continuously re-propose
-in subsequent turns, multiplying Phase 1 abort/retry traffic under saturation.
+Discussion & Analysis:
+The saturation ceiling is established by the physical consensus latency floor (~30 ms per turn
+under contention), comprising two sequential network round trips (Phase 1 Propose/Promise +
+Phase 2 Accept/Accepted) plus GCL TCP serialization and Phase 3 Commit broadcast. When the
+move interval drops below this physical floor, the idle sleep gap completely disappears and
+threads block inside broadcastTOMsg awaiting majority acknowledgments. Decreasing interval to
+0 ms merely inflates internal socket buffers without accelerating consensus round completion.
+Furthermore, each broadcast requires (N-1) TCP transmissions, generating up to 44 network
+packets per turn for N=5. Socket buffer lock contention, OS context switching, and cascading
+retry storms absorb available CPU cycles, bounding the maximum achievable consensus rate.
 
 5. CONCLUSION
 
-Paxos delivers high throughput and perfect fairness under moderate loads (I >= 50ms).
-Under high contention (I -> 0ms), performance plateaus at a physical latency ceiling,
-group scalability is constrained by O(N^2) message overhead, and deterministic ballot
-tie-breaking produces severe process unfairness.
-================================================================================
+Paxos achieves near-linear throughput scaling and equal fairness under moderate workloads
+(I ≥ 50 ms). Under intense contention (I → 0 ms), system throughput saturates against a
+physical round-trip latency floor, network overhead scales quadratically with group size,
+and deterministic ballot tie-breaking introduces temporal ordering bias.

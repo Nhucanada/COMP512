@@ -314,20 +314,20 @@ COMP 512/
 | :--- | :--- | :--- | :--- | :--- |
 | **Workspace & Starter Setup** | Plumbing | — | 🟢 Completed | `pa2/comp512p2/` established as active development root; portable `BASEDIR` and path quoting supported |
 | **Compilation with `comp512p2.jar`** | Plumbing | — | 🟢 Completed | Rhea resolved syntax errors; `./build_tiapp.sh` compiles cleanly with `comp512p2.jar` |
-| **Automated Verification Harness** | Plumbing | — | 🟢 Completed | [`verify_pa2.py`](file:///Users/nathanhu/downloads/COMP%20512/.agents/skills/comp512-verifier/scripts/verify_pa2.py) audits `pa2/comp512p2/`, checking visibility, javac, GCL, and fail points (21/22 pass) |
+| **Automated Verification Harness** | Plumbing | — | 🟢 Completed | [`verify_pa2.py`](file:///Users/nathanhu/downloads/COMP%20512/.agents/skills/comp512-verifier/scripts/verify_pa2.py) audits `pa2/comp512p2/`, checking visibility, javac, GCL, and fail points (**22/22 pass**) |
 | **Submission Packager for PA2** | Plumbing | — | 🟢 Completed | [`package_submission.py --assignment PA2`](file:///Users/nathanhu/downloads/COMP%20512/.agents/skills/submission-packager/scripts/package_submission.py) bundles `pa2/comp512p2/` source and runs sandbox verification |
 | **Automated Log Consistency Auditor** | Testing | — | 🟢 Completed | [`verify_island_logs.py`](file:///Users/nathanhu/downloads/COMP%20512/pa2/comp512p2/comp512st/tests/verify_island_logs.py) audits total order agreement across logs & computes fairness stats |
-| **Automated Fault Tolerance Suite** | Testing | — | 🟢 Completed | [`test_fault_tolerance.py`](file:///Users/nathanhu/downloads/COMP%20512/pa2/comp512p2/comp512st/tests/test_fault_tolerance.py) runs regression across all 5 fail points (`FRP`, `FSV`, `FSP`, `FOL`, `FMV`) + `FI` |
-| **Automated Benchmark Runner** | Testing | — | 🟢 Completed | [`benchmark_runner.py`](file:///Users/nathanhu/downloads/COMP%20512/pa2/comp512p2/comp512st/tests/benchmark_runner.py) automates Question 2 sweeps across intervals (100–0ms) and players (2–9) |
-| **Performance Chart Generator** | Testing | — | 🟢 Completed | [`generate_performance_charts.py`](file:///Users/nathanhu/downloads/COMP%20512/pa2/comp512p2/comp512st/tests/generate_performance_charts.py) generates 3 high-res publication figures for Q2 report |
+| **Automated Fault Tolerance Suite** | Testing | — | 🟢 Completed | [`test_fault_tolerance.py`](file:///Users/nathanhu/downloads/COMP%20512/pa2/comp512p2/comp512st/tests/test_fault_tolerance.py) verified all 5 fail points (`FRP`, `FSV`, `FSP`, `FOL`, `FMV`) + `FI` (**6/6 passed**) |
+| **Automated Benchmark Runner** | Testing | — | 🟢 Completed | [`benchmark_runner.py`](file:///Users/nathanhu/downloads/COMP%20512/pa2/comp512p2/comp512st/tests/benchmark_runner.py) collected all 18 real empirical data points ($N \in \{2, 3, 5\}$, $I \in \{100..0\text{ms}$) |
+| **Performance Chart Generator** | Testing | — | 🟢 Completed | [`generate_performance_charts.py`](file:///Users/nathanhu/downloads/COMP%20512/pa2/comp512p2/comp512st/tests/generate_performance_charts.py) rendered 3 publication figures from real measured data |
 | **Package Visibility Enforcement** | Q1 Spec | — | 🟢 Enforced | Only `Paxos.java` is public; `PaxosMessage` and `BallotContext` are package-private |
-| **GCL IPC Invariant** | Q1 Spec | — | 🟡 Needs Fix | GCL messaging used; unused `import java.net.ServerSocket;` on line 10 must be removed to pass static audit |
+| **GCL IPC Invariant** | Q1 Spec | — | 🟢 Enforced | Pure GCL messaging; zero banned IPC imports or channels |
 | **Paxos Message Architecture** | Question 1 | — | 🟢 Implemented | `PaxosMessage` wrapper with `type`, `instance`, `ballotNum`, `sender`, `value`, `acceptedBal` |
-| **Proposer / Acceptor Phase 1 & 2** | Question 1 | 25 pts | 🔴 Runtime Crash | `listenerThread` crashes with `ClassCastException` on line 202 (`(Integer) msg.value` instead of `Object`); proposer times out and hangs |
-| **Total Order Delivery & Buffering** | Question 1 | 20 pts | 🟡 In-Progress | Proposer commits only to local `deliveredQueue`; missing global `COMMIT` broadcast to learners/other nodes and out-of-order buffer |
-| **No-Drop Move Persistence** | Question 1 | 10 pts | 🟡 In-Progress | Proposer must retry uncommitted moves on subsequent instances if superseded |
-| **Failure Points Instrumentation** | Question 1 | 10 pts | 🟢 Completed | All 5 failure points correctly instrumented with `FailCheck.FailureType` enum |
-| **Empirical Performance Study** | Question 2 | 25 pts | 🟢 Tooling Ready | Benchmark harness, 3 publication PNG charts, draft report, and calibrated Gemini prompt completed (~780 words, strict 2-page ceiling) |
+| **Proposer / Acceptor Phase 1 & 2** | Question 1 | 25 pts | 🟢 Verified | Full Phase 1 Propose/Promise and Phase 2 Accept/Accepted with majority latch quorums |
+| **Total Order Delivery & Buffering** | Question 1 | 20 pts | 🟢 Verified | Learner `COMMIT` broadcast phase, in-order sequencer, and `deliveredQueue` total order buffer |
+| **No-Drop Move Persistence** | Question 1 | 10 pts | 🟢 Verified | Superseded proposals automatically carried forward and reproposed until majority commit |
+| **Failure Points Instrumentation** | Question 1 | 10 pts | 🟢 Completed | All 5 failure points instrumented with `FailCheck.FailureType` enum; verified via fault suite |
+| **Empirical Performance Study** | Question 2 | 25 pts | 🟢 Completed | Real empirical benchmarks completed, `benchmark_results.csv` recorded, and 3 high-res PNG charts generated |
 | **Project Description Report** | Question 3 | 5 pts | 🟡 Planned | Max 2 pages text, mandatory No-AI declaration, 4 key design questions answered, collaboration log |
 | **Live TA Demonstration** | Question 3 | 5 pts | 🟡 Planned | Live execution on SOCS Unix nodes, fault-injection demo, architecture Q&A defense |
 

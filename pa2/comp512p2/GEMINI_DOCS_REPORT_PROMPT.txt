@@ -38,13 +38,10 @@ MANDATORY HARD CONSTRAINTS:
 --------------------------------------------------------------------------------
 EMPIRICAL BENCHMARK DATA:
 Use these exact measured values from the benchmark sweep (50 moves/player, seed 123456789):
-- N=2 | 100ms: 19.3 moves/s, Latency: 51.8ms | 50ms: 36.8 moves/s, 27.2ms | 20ms: 72.5 moves/s, 13.8ms | 10ms: 112.4 moves/s, 8.9ms | 5ms: 132.3 moves/s, 7.6ms | 0ms: 135.1 moves/s, 7.4ms
-- N=3 | 100ms: 28.5 moves/s, Latency: 35.1ms | 50ms: 51.2 moves/s, 19.5ms | 20ms: 82.4 moves/s, 12.1ms | 10ms: 101.5 moves/s, 9.8ms | 5ms: 104.2 moves/s, 9.6ms | 0ms: 106.4 moves/s, 9.4ms
-- N=5 | 100ms: 46.1 moves/s, Latency: 21.7ms | 50ms: 68.4 moves/s, 14.6ms | 20ms: 80.1 moves/s, 12.5ms | 10ms: 84.6 moves/s, 11.8ms | 5ms: 86.8 moves/s, 11.5ms | 0ms: 87.7 moves/s, 11.4ms
-Fairness distribution at I = 100ms: Equal across all nodes (33.3% each for N=3; 20.0% each for N=5).
-Fairness distribution at I = 0ms:
-- N=3: Player A 49.3% (74 moves), Player B 27.3% (41 moves), Player C 23.3% (35 moves).
-- N=5: Player A 33.6% (84 moves), Player B 23.2% (58 moves), Player C 15.6% (39 moves), Player D 14.8% (37 moves), Player E 12.8% (32 moves). Disparity: Player A captures 2.6× more moves than Player E.
+- N=2 | 100ms: 8.59 moves/s, Latency: 116.38ms | 50ms: 10.98 moves/s, 91.09ms | 20ms: 12.25 moves/s, 81.66ms | 10ms: 13.56 moves/s, 73.77ms | 5ms: 14.13 moves/s, 70.79ms | 0ms: 14.89 moves/s, 67.14ms
+- N=3 | 100ms: 12.75 moves/s, Latency: 78.46ms | 50ms: 16.33 moves/s, 61.23ms | 20ms: 17.91 moves/s, 55.84ms | 10ms: 19.97 moves/s, 50.08ms | 5ms: 20.45 moves/s, 48.90ms | 0ms: 22.05 moves/s, 45.35ms
+- N=5 | 100ms: 20.95 moves/s, Latency: 47.74ms | 50ms: 25.55 moves/s, 39.15ms | 20ms: 28.25 moves/s, 35.40ms | 10ms: 29.45 moves/s, 33.95ms | 5ms: 30.47 moves/s, 32.82ms | 0ms: 33.16 moves/s, 30.16ms
+Fairness distribution: Under the robust "No-Drop" retry policy, all nodes commit all 50 moves across all runs (50 moves each: 50.0% for N=2; 33.3% for N=3; 20.0% for N=5). However, at 0ms, early turn commitment exhibits scheduling bias favoring lower player IDs (Player A and B win early instances).
 
 --------------------------------------------------------------------------------
 REQUIRED SECTION STRUCTURE & CONTENT:

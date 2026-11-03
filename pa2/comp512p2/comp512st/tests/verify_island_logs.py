@@ -92,9 +92,15 @@ def verify_logs(log_dir=".", gameid=None, expected_players=None):
     print("\n--- Move Distribution & Fairness Analysis ---")
     player_counts = {}
     for m in baseline_moves:
-        # Move format typically starts with player character e.g. "A L" or "B R" or player ID
         parts = m.split()
-        player = parts[0] if parts else "UNKNOWN"
+        if len(parts) >= 5 and parts[0] == "Move" and parts[2] == "player":
+            try:
+                p_num = int(parts[4])
+                player = f"Player {chr(ord('A') + p_num - 1)}"
+            except ValueError:
+                player = parts[4]
+        else:
+            player = parts[0] if parts else "UNKNOWN"
         player_counts[player] = player_counts.get(player, 0) + 1
 
     total_moves = len(baseline_moves)

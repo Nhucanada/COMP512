@@ -78,7 +78,15 @@ def run_single_benchmark(num_players, interval, maxmoves=100, randseed="12345678
     # Count per-player distribution
     player_counts = {}
     for m in moves:
-        p = m.split()[0] if m.split() else "UNKNOWN"
+        parts = m.split()
+        if len(parts) >= 5 and parts[0] == "Move" and parts[2] == "player":
+            try:
+                p_num = int(parts[4])
+                p = f"Player {chr(ord('A') + p_num - 1)}"
+            except ValueError:
+                p = parts[4]
+        else:
+            p = parts[0] if parts else "UNKNOWN"
         player_counts[p] = player_counts.get(p, 0) + 1
 
     fairness_str = "; ".join([f"{p}:{cnt}" for p, cnt in sorted(player_counts.items())])

@@ -2,354 +2,362 @@ package comp512st.paxos;
 
 // Access to the GCL layer
 import comp512.gcl.*;
+import comp512.utils.FailCheck;
 
-import comp512.utils.*;
-
-// Any other imports that you may need.
-import java.io.*;
-import java.net.ServerSocket;
+// Standard Java imports
+import java.io.IOException;
+import java.io.Serializable;
+import java.net.UnknownHostException;
 import java.util.*;
 import java.util.concurrent.*;
-import java.util.logging.*;
-import java.net.UnknownHostException;
-
-
-
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.logging.Logger;
+import java.util.logging.Level;
 
 // ANY OTHER classes, etc., that you add must be private to this package and not visible to the application layer.
 
-// message wrapper to ensure paxos protocol //TODO: make private.
-class PaxosMessage implements Serializable{
+// Package-private message wrapper for Paxos protocol
+class PaxosMessage implements Serializable {
+	private static final long serialVersionUID = 1L;
 
-	private static final long serialVersionID = 1L;
-
-	// todo: change to enum??
-	String type;    //"PROPOSE", "PROMISE", "ACCEPT", "ACCEPTED"
-
+	String type;       // "PROPOSE", "PROMISE", "DENY", "ACCEPT", "ACCEPTED", "REJECT", "COMMIT"
 	int instance;
 	int ballotNum;
 	String sender;
 	Object value;
 	int acceptedBal;
 
-	public PaxosMessage(String type, int instance, int ballotNumber, String sender, Object value, int acceptedBallot) {
+	public PaxosMessage(String type, int instance, int ballotNum, String sender, Object value, int acceptedBal) {
 		this.type = type;
 		this.instance = instance;
-		this.ballotNum = ballotNumber;
+		this.ballotNum = ballotNum;
 		this.sender = sender;
 		this.value = value;
-		this.acceptedBal = acceptedBallot;
+		this.acceptedBal = acceptedBal;
 	}
 }
 
-	// helper class to track state and responses for an active ballot attempt
-	class BallotContext {
-		int ballotNum;
-		CountDownLatch promiseLatch;
-		Set<String> promisedProcs = Collections.synchronizedSet(new HashSet<>());
-		int highestOtherAcceptedBallot = -1;
-		Object highestOtherAcceptedValue = null;
+// Package-private context tracking state and responses for an active ballot attempt
+class BallotContext {
+	final int ballotNum;
+	final int majority;
 
-		CountDownLatch acceptedLatch;
-		Set<String> acceptedProcs = Collections.synchronizedSet(new HashSet<>());
+	final Set<String> promisedProcs = Collections.synchronizedSet(new HashSet<>());
+	final Set<String> deniedProcs = Collections.synchronizedSet(new HashSet<>());
+	volatile int highestOtherAcceptedBallot = -1;
+	volatile Object highestOtherAcceptedValue = null;
+	final CountDownLatch promiseLatch;
 
-		public BallotContext(int ballotNum, int totalProcesses) {
-			this.ballotNum = ballotNum;
-			int majority = (totalProcesses / 2) + 1;
-			this.promiseLatch = new CountDownLatch(majority);
-			this.acceptedLatch = new CountDownLatch(majority);
-		}
+	final Set<String> acceptedProcs = Collections.synchronizedSet(new HashSet<>());
+	final Set<String> rejectedProcs = Collections.synchronizedSet(new HashSet<>());
+	final CountDownLatch acceptLatch;
+
+	public BallotContext(int ballotNum, int totalProcesses) {
+		this.ballotNum = ballotNum;
+		this.majority = (totalProcesses / 2) + 1;
+		this.promiseLatch = new CountDownLatch(majority);
+		this.acceptLatch = new CountDownLatch(majority);
 	}
+}
 
-// extend / implement whatever interface, etc. as required.
-// NO OTHER public members / methods allowed. broadcastTOMsg, acceptTOMsg, and shutdownPaxos must be the only visible methods to the application layer.
-//You should also not change the signature of these methods (arguments and return value) other aspects maybe changed with reasonable design needs.
-public class Paxos
-{
-	GCL gcl;
-	FailCheck failCheck;
-	Logger logger;
-	String myProcess;
-	String[] allValidProcesses;
+// Paxos consensus module (ONLY public class in comp512st.paxos)
+public class Paxos {
+	private final GCL gcl;
+	private final FailCheck failCheck;
+	private final Logger logger;
+	private final String myProcess;
+	private final String[] allValidProcesses;
+	private final int myProcessIndex;
+	private final int majority;
 
-	private int currInstance = 0;
+	// Acceptor state per instance
+	private final Map<Integer, Integer> maxPromisedBallot = new ConcurrentHashMap<>();
+	private final Map<Integer, Integer> maxAcceptedBallot = new ConcurrentHashMap<>();
+	private final Map<Integer, Object> acceptedValues = new ConcurrentHashMap<>();
 
-	// NOTE: concurrentHashMaps are thread safe
-	private final Map<Integer, Integer> highestPromisedBallot = new ConcurrentHashMap<>();
-	private final Map<Integer, Integer> highestAcceptedBallot = new ConcurrentHashMap<>();
-	private final Map<Integer, Integer> acceptedValues = new ConcurrentHashMap<>();
-
+	// Proposer state per instance
 	private final Map<Integer, BallotContext> activeBallots = new ConcurrentHashMap<>();
+	private final AtomicInteger ballotSeq = new AtomicInteger(1);
 
-	//blocking queue to ensure TO
+	// Learner / Total Order Delivery state
+	private final Map<Integer, Object> committedValues = new ConcurrentHashMap<>();
 	private final BlockingQueue<Object> deliveredQueue = new LinkedBlockingQueue<>();
+	private final Object deliverLock = new Object();
+	private int nextDeliveryInstance = 0;
 
-	private Thread listenerThread;
-	private volatile boolean running = true; // volatile booleans are
+	private final Thread listenerThread;
+	private volatile boolean running = true;
 
-	int ballotID;
-
-	public Paxos(String myProcess, String[] allGroupProcesses, Logger logger, FailCheck failCheck) throws IOException, UnknownHostException
-	{
-		// Remember to call the failCheck.checkFailure(...) with appropriate arguments throughout your Paxos code to force fail points if necessary.
-		this.failCheck = failCheck;
-
-		// Initialize the GCL communication system as well as anything else you need to.
-		this.gcl = new GCL(myProcess, allGroupProcesses, null, logger) ;
-		this.logger = logger;
-
+	public Paxos(String myProcess, String[] allGroupProcesses, Logger logger, FailCheck failCheck) throws IOException, UnknownHostException {
 		this.myProcess = myProcess;
-
 		this.allValidProcesses = allGroupProcesses;
+		this.logger = logger;
+		this.failCheck = failCheck;
+		this.majority = (allGroupProcesses.length / 2) + 1;
 
-		this.logger.info("[PAXOS INIT] Initialized Paxos for process: " + myProcess);
+		int idx = 0;
+		for (int i = 0; i < allGroupProcesses.length; i++) {
+			if (allGroupProcesses[i].equals(myProcess)) {
+				idx = i;
+				break;
+			}
+		}
+		this.myProcessIndex = idx;
 
-		//start listening for msgs
-		this.listenerThread = new Thread(this::listenLoop);
+		this.gcl = new GCL(myProcess, allGroupProcesses, null, logger);
+		this.logger.info(String.format("[PAXOS INIT] Initialized Paxos for %s (index %d, majority %d/%d)",
+				myProcess, myProcessIndex, majority, allGroupProcesses.length));
+
+		this.listenerThread = new Thread(this::listenLoop, "Paxos-Listener-" + myProcess);
+		this.listenerThread.setDaemon(true);
 		this.listenerThread.start();
 	}
 
-	//loop to listen for incoming msgs
-	private void listenLoop(){
-
-		try{
-			while (running){
+	private void listenLoop() {
+		try {
+			while (running) {
 				GCMessage gcMsg = gcl.readGCMessage();
-				if (gcMsg == null || gcMsg.val == null)
-				{
+				if (gcMsg == null || gcMsg.val == null) {
 					break;
 				}
-
-				if (gcMsg.val instanceof PaxosMessage)
-				{
-					PaxosMessage pmsg = (PaxosMessage) gcMsg.val;
-					handlePaxosMsg(pmsg);
-
+				if (gcMsg.val instanceof PaxosMessage) {
+					handlePaxosMsg((PaxosMessage) gcMsg.val);
 				}
-
 			}
 		} catch (InterruptedException e) {
-			this.logger.info("[ListenLoop] Listener thread interrupted for process: " + myProcess);
+			logger.info("[ListenLoop] Interrupted for " + myProcess);
 		} catch (Exception e) {
-			this.logger.log(Level.SEVERE, "Error in Paxos Listening Loop: ", e );
+			logger.log(Level.SEVERE, "[ListenLoop] Error in listener loop for " + myProcess, e);
 		}
 	}
 
-	// synchronised: can only be used by 1 thread at a time
-	private synchronized void handlePaxosMsg (PaxosMessage msg) {
-
+	private void handlePaxosMsg(PaxosMessage msg) {
 		switch (msg.type) {
 			case "PROPOSE": {
 				failCheck.checkFailure(FailCheck.FailureType.RECEIVEPROPOSE);
 				int inst = msg.instance;
-				int balNum = msg.ballotNum;
-				int currPromise = highestAcceptedBallot.getOrDefault(inst, -1); //get inst, or default to -1
+				int bal = msg.ballotNum;
+				int currentPromise = maxPromisedBallot.getOrDefault(inst, -1);
 
-				this.logger.info(String.format("[%s] Received PROPOSE for instance %d with ballot %d from %s", myProcess, inst, balNum, msg.sender));
-
-				if (balNum > currPromise) {
-					highestPromisedBallot.put(inst, balNum);
-
-					// promise highest value
-					int accepted = highestAcceptedBallot.getOrDefault(inst, -1);
+				if (bal > currentPromise) {
+					maxPromisedBallot.put(inst, bal);
+					int accBal = maxAcceptedBallot.getOrDefault(inst, -1);
 					Object accVal = acceptedValues.get(inst);
 
-					this.logger.info(String.format("[%s] Promising ballot %d for instance %d. Sending PROMISE back to %s (highest accepted bal: %d)",
-							myProcess, balNum, inst, msg.sender, accepted));
-
-					//create new PROMISE reply msg
-					PaxosMessage promise = new PaxosMessage("PROMISE", inst, balNum, myProcess, accVal, accepted);
+					PaxosMessage promise = new PaxosMessage("PROMISE", inst, bal, myProcess, accVal, accBal);
 					gcl.sendMsg(promise, msg.sender);
 					failCheck.checkFailure(FailCheck.FailureType.AFTERSENDVOTE);
-
 				} else {
-					this.logger.info(String.format("[%s] REJECTED PROPOSE for instance %d with ballot %d (already promised ballot %d)",
-							myProcess, inst, balNum, currPromise));
+					PaxosMessage deny = new PaxosMessage("DENY", inst, bal, myProcess, null, currentPromise);
+					gcl.sendMsg(deny, msg.sender);
+					failCheck.checkFailure(FailCheck.FailureType.AFTERSENDVOTE);
 				}
+				break;
 			}
-			break;
 			case "PROMISE": {
-				int inst = msg.instance;
-				int balNum = msg.ballotNum;
-				BallotContext ctx = activeBallots.get(inst);
-
-				if (ctx != null && ctx.ballotNum == balNum) {
+				BallotContext ctx = activeBallots.get(msg.instance);
+				if (ctx != null && ctx.ballotNum == msg.ballotNum) {
 					if (ctx.promisedProcs.add(msg.sender)) {
-						if (msg.acceptedBal > ctx.highestOtherAcceptedBallot) {
+						if (msg.acceptedBal > ctx.highestOtherAcceptedBallot && msg.value != null) {
 							ctx.highestOtherAcceptedBallot = msg.acceptedBal;
 							ctx.highestOtherAcceptedValue = msg.value;
 						}
 						ctx.promiseLatch.countDown();
-						this.logger.info(String.format("[%s] Received PROMISE for instance %d, ballot %d from %s. Total promises: %d",
-								myProcess, inst, balNum, msg.sender, (allValidProcesses.length / 2 + 1) - ctx.promiseLatch.getCount()));
 					}
 				}
 				break;
 			}
-			case "ACCEPT":
-			{
+			case "DENY": {
+				BallotContext ctx = activeBallots.get(msg.instance);
+				if (ctx != null && ctx.ballotNum == msg.ballotNum) {
+					ctx.deniedProcs.add(msg.sender);
+				}
+				break;
+			}
+			case "ACCEPT": {
 				int inst = msg.instance;
-				int balNum = msg.ballotNum;
-				int currPromise = highestPromisedBallot.getOrDefault(inst, -1);
+				int bal = msg.ballotNum;
+				int currentPromise = maxPromisedBallot.getOrDefault(inst, -1);
 
-				this.logger.info(String.format("[%s] Received ACCEPT request for instance %d, ballot %d from %s with value: %s",
-						myProcess, inst, balNum, msg.sender, msg.value));
+				if (bal >= currentPromise) {
+					maxPromisedBallot.put(inst, bal);
+					maxAcceptedBallot.put(inst, bal);
+					acceptedValues.put(inst, msg.value);
 
-				//  check against highest promised ballot
-				if (balNum >= currPromise) {
-					highestPromisedBallot.put(inst, balNum);
-					highestAcceptedBallot.put(inst, balNum);
-					acceptedValues.put(inst, (Integer) msg.value);
-
-					this.logger.info(String.format("[%s] Accepted value for instance %d, ballot %d. Sending ACCEPTED acknowledgment to %s",
-							myProcess, inst, balNum, msg.sender));
-
-					// Reply with ACCEPTED ack back to proposer
-					PaxosMessage acceptedMsg = new PaxosMessage("ACCEPTED", inst, balNum, myProcess, msg.value, -1);
+					PaxosMessage acceptedMsg = new PaxosMessage("ACCEPTED", inst, bal, myProcess, msg.value, bal);
 					gcl.sendMsg(acceptedMsg, msg.sender);
 				} else {
-					this.logger.info(String.format("[%s] REJECTED ACCEPT for instance %d, ballot %d (promised higher ballot %d)",
-							myProcess, inst, balNum, currPromise));
+					PaxosMessage reject = new PaxosMessage("REJECT", inst, bal, myProcess, null, currentPromise);
+					gcl.sendMsg(reject, msg.sender);
 				}
 				break;
 			}
-			case "ACCEPTED":
-			{
-				int inst = msg.instance;
-				int balNum = msg.ballotNum;
-				BallotContext ctx = activeBallots.get(inst);
-
-				if (ctx != null && ctx.ballotNum == balNum) {
+			case "ACCEPTED": {
+				BallotContext ctx = activeBallots.get(msg.instance);
+				if (ctx != null && ctx.ballotNum == msg.ballotNum) {
 					if (ctx.acceptedProcs.add(msg.sender)) {
-						ctx.acceptedLatch.countDown();
-						this.logger.info(String.format("[%s] Received ACCEPTED ack for instance %d, ballot %d from %s. Total accepts: %d",
-								myProcess, inst, balNum, msg.sender, (allValidProcesses.length / 2 + 1) - ctx.acceptedLatch.getCount()));
+						ctx.acceptLatch.countDown();
 					}
 				}
 				break;
-		}
-		default:
-			this.logger.warning(String.format("[%s] Received unknown message type: %s", myProcess, msg.type));
-			break;
-		}
-	}
-
-	// paxos recieves msg (move) from app layer. wants to add move to total order.
-	public void broadcastTOMsg(Object val)
-	{
-		// This is just a place holder.
-		// Extend this to build whatever Paxos logic you need to make sure the messaging system is total order.
-		// Here you will have to ensure that the CALL BLOCKS, and is returned ONLY when a majority (and immediately upon majority) of processes have accepted the value.
-
-		int instanceToRun;
-		synchronized (this) {
-			instanceToRun = currInstance++;
-		}
-		this.logger.info(String.format("[%s] App requested broadcast for value: %s assigned to instance %d", myProcess, val, instanceToRun));
-
-		Object chosenValue = runConsensus(instanceToRun, val);
-
-		this.logger.info(String.format("[%s] Consensus successfully reached for instance %d with committed value: %s", myProcess, instanceToRun, chosenValue));
-
-		// Push successfully agreed-upon message to local delivery queue
-		try {
-			deliveredQueue.put(chosenValue);
-		} catch (InterruptedException e) {
-			Thread.currentThread().interrupt();
+			}
+			case "REJECT": {
+				BallotContext ctx = activeBallots.get(msg.instance);
+				if (ctx != null && ctx.ballotNum == msg.ballotNum) {
+					ctx.rejectedProcs.add(msg.sender);
+				}
+				break;
+			}
+			case "COMMIT": {
+				handleCommit(msg.instance, msg.value);
+				break;
+			}
+			default:
+				logger.warning(String.format("[%s] Unknown message type: %s", myProcess, msg.type));
+				break;
 		}
 	}
 
-	// keep running paxos until a majority is reached
+	private void handleCommit(int instance, Object value) {
+		committedValues.put(instance, value);
+		drainCommitted();
+	}
+
+	private void drainCommitted() {
+		synchronized (deliverLock) {
+			while (committedValues.containsKey(nextDeliveryInstance)) {
+				Object valToDeliver = committedValues.get(nextDeliveryInstance);
+				deliveredQueue.offer(valToDeliver);
+				nextDeliveryInstance++;
+				deliverLock.notifyAll();
+			}
+		}
+	}
+
+	public void broadcastTOMsg(Object val) {
+		boolean committed = false;
+		while (!committed && running) {
+			int inst;
+			synchronized (deliverLock) {
+				inst = nextDeliveryInstance;
+				while (committedValues.containsKey(inst)) {
+					inst++;
+				}
+			}
+
+			Object chosen = runConsensus(inst, val);
+			if (chosen != null && isSameMove(chosen, val)) {
+				committed = true;
+				break;
+			}
+
+			// If another value won instance 'inst', move is not dropped! Retry next instance.
+			try {
+				Thread.sleep(ThreadLocalRandom.current().nextInt(2, 8));
+			} catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+				break;
+			}
+		}
+	}
+
 	private Object runConsensus(int instance, Object proposedVal) {
-		int localBallotSeq = 0;
-
-		while (running) {
-			// Generate a unique ballot number
-			localBallotSeq++;
-			int ballotNum = localBallotSeq * 100 + Math.abs(myProcess.hashCode() % 100);
-
-			this.logger.info(String.format("[%s] Starting consensus round for instance %d with generated ballot %d", myProcess, instance, ballotNum));
-
+		while (running && !committedValues.containsKey(instance)) {
+			int ballotNum = ballotSeq.incrementAndGet() * 100 + myProcessIndex;
 			BallotContext ctx = new BallotContext(ballotNum, allValidProcesses.length);
 			activeBallots.put(instance, ctx);
 
-			// 1. Send PROPOSE
+			// Phase 1: PROPOSE
 			PaxosMessage proposeMsg = new PaxosMessage("PROPOSE", instance, ballotNum, myProcess, null, -1);
-			this.logger.info(String.format("[%s] Broadcasting PROPOSE for instance %d, ballot %d", myProcess, instance, ballotNum));
 			gcl.broadcastMsg(proposeMsg);
 			failCheck.checkFailure(FailCheck.FailureType.AFTERSENDPROPOSE);
 
-			// Wait for majority promises with a timeout (e.g., 2000ms) to handle retries/livelocks
-			boolean receivedPromises = false;
+			boolean promised = false;
 			try {
-				receivedPromises = ctx.promiseLatch.await(2000, TimeUnit.MILLISECONDS);
+				promised = ctx.promiseLatch.await(60, TimeUnit.MILLISECONDS);
 			} catch (InterruptedException e) {
-				if (!running) return proposedVal;
+				if (!running) return null;
 				Thread.currentThread().interrupt();
 			}
 
-			if (!receivedPromises) {
-				logger.warning(String.format("[%s] Timeout waiting for PROMISE quorum for instance %d, ballot %d. Retrying...", myProcess, instance, ballotNum));
+			if (committedValues.containsKey(instance)) {
 				activeBallots.remove(instance);
-				continue; // Retry with a higher ballot number
+				return committedValues.get(instance);
+			}
+
+			if (!promised || ctx.deniedProcs.size() >= majority) {
+				activeBallots.remove(instance);
+				try {
+					Thread.sleep(ThreadLocalRandom.current().nextInt(2, 10));
+				} catch (InterruptedException e) {
+					Thread.currentThread().interrupt();
+				}
+				continue;
 			}
 
 			failCheck.checkFailure(FailCheck.FailureType.AFTERBECOMINGLEADER);
-			this.logger.info(String.format("[%s] Quorum of PROMISES reached for instance %d, ballot %d", myProcess, instance, ballotNum));
 
-			//2. Send ACCEPT
-			// If any acceptor returned a previously accepted value, safety dictates we adopt the value with the highest ballot
-			Object valueToAccept = proposedVal;
-			if (ctx.highestOtherAcceptedValue != null) {
-				valueToAccept = ctx.highestOtherAcceptedValue;
-				this.logger.info(String.format("[%s] Adopting previously accepted value from another ballot: %s", myProcess, valueToAccept));
-			}
-
-			PaxosMessage acceptMsg = new PaxosMessage("ACCEPT", instance, ballotNum, myProcess, valueToAccept, -1);
-			this.logger.info(String.format("[%s] Broadcasting ACCEPT for instance %d, ballot %d with value: %s", myProcess, instance, ballotNum, valueToAccept));
-
+			// Phase 2: ACCEPT
+			Object valueToAccept = (ctx.highestOtherAcceptedValue != null) ? ctx.highestOtherAcceptedValue : proposedVal;
+			PaxosMessage acceptMsg = new PaxosMessage("ACCEPT", instance, ballotNum, myProcess, valueToAccept, ballotNum);
 			gcl.broadcastMsg(acceptMsg);
 
-			// Wait for majority ACCEPTED acknowledgments
-			boolean receivedAccepts = false;
+			boolean accepted = false;
 			try {
-				receivedAccepts = ctx.acceptedLatch.await(2000, TimeUnit.MILLISECONDS);
-
+				accepted = ctx.acceptLatch.await(60, TimeUnit.MILLISECONDS);
 			} catch (InterruptedException e) {
-				if (!running) return proposedVal;
+				if (!running) return null;
 				Thread.currentThread().interrupt();
 			}
 
-			if (!receivedAccepts) {
-				this.logger.warning(String.format("[%s] Timeout waiting for ACCEPTED quorum for instance %d, ballot %d. Retrying...", myProcess, instance, ballotNum));
+			if (committedValues.containsKey(instance)) {
 				activeBallots.remove(instance);
-				continue; // Retry with a higher ballot number
+				return committedValues.get(instance);
 			}
 
+			if (!accepted || ctx.rejectedProcs.size() >= majority) {
+				activeBallots.remove(instance);
+				try {
+					Thread.sleep(ThreadLocalRandom.current().nextInt(2, 10));
+				} catch (InterruptedException e) {
+					Thread.currentThread().interrupt();
+				}
+				continue;
+			}
+
+			// Quorum achieved!
 			failCheck.checkFailure(FailCheck.FailureType.AFTERVALUEACCEPT);
-			this.logger.info(String.format("[%s] Quorum of ACCEPTED acks reached for instance %d, ballot %d", myProcess, instance, ballotNum));
+
+			// Phase 3: COMMIT broadcast
+			PaxosMessage commitMsg = new PaxosMessage("COMMIT", instance, ballotNum, myProcess, valueToAccept, ballotNum);
+			gcl.broadcastMsg(commitMsg);
+			handleCommit(instance, valueToAccept);
+
 			activeBallots.remove(instance);
 			return valueToAccept;
 		}
-		return proposedVal;
+
+		return committedValues.get(instance);
 	}
 
-	// This is what the application layer is calling to figure out what is the next message in the total order.
-	// Messages delivered in ALL the processes in the group should deliver this in the same order.
+	private boolean isSameMove(Object a, Object b) {
+		if (a == b) return true;
+		if (a == null || b == null) return false;
+		if (a instanceof Object[] && b instanceof Object[]) {
+			return Arrays.equals((Object[]) a, (Object[]) b);
+		}
+		return a.equals(b);
+	}
 
 	public Object acceptTOMsg() throws InterruptedException {
 		return deliveredQueue.take();
 	}
 
 	public void shutdownPaxos() {
-		this.logger.info(String.format("[%s] Shutting down Paxos protocol layer...", myProcess));
 		running = false;
 		if (listenerThread != null) {
 			listenerThread.interrupt();
 		}
 		gcl.shutdownGCL();
-
-		this.logger.info(String.format("[%s] Paxos layer successfully shutdown.", myProcess));
 	}
 }
-
