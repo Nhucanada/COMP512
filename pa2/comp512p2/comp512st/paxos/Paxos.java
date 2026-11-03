@@ -102,6 +102,8 @@ public class Paxos
 
 		this.allValidProcesses = allGroupProcesses;
 
+		logger.info("[PAXOS INIT] Initialized Paxos for process: " + myProcess);
+
 		//start listening for msgs
 		this.listenerThread = new Thread(this::listenLoop);
 		this.listenerThread.start();
@@ -127,45 +129,48 @@ public class Paxos
 
 			}
 		} catch (InterruptedException e) {
-
+			logger.info("[ListenLoop] Listener thread interrupted for process: " + myProcess);
 		} catch (Exception e) {
 			logger.log(Level.SEVERE, "Error in Paxos Listening Loop: ", e );
 		}
 	}
 
 	// synchronised: can only be used by 1 thread at a time
-	private synchronized void handlePaxosMsg (PaxosMessage msg)
-	{
+	private synchronized void handlePaxosMsg (PaxosMessage msg) {
 
 		//TODO: fix
 		failCheck.checkFailure(myProcess, "handlePaxosMessage");
 
-		switch (msg.type)
-		{
-			case "PROPOSE":
-			{
+		switch (msg.type) {
+			case "PROPOSE": {
 				int inst = msg.instance;
 				int balNum = msg.ballotNum;
 				int currPromise = highestAcceptedBallot.getOrDefault(inst, -1); //get inst, or default to -1
 
-				if (balNum > currPromise)
-				{
+				logger.info(String.format("[%s] Received PROPOSE for instance %d with ballot %d from %s", myProcess, inst, balNum, msg.sender));
+
+				if (balNum > currPromise) {
 					highestPromisedBallot.put(inst, balNum);
-					failCheck.checkFailure(myProcess,"propose"); //TODO
+					failCheck.checkFailure(myProcess, "propose"); //TODO
 
 					// promise highest value
 					int accepted = highestAcceptedBallot.getOrDefault(inst, -1);
 					Object accVal = acceptedValues.get(inst);
 
+					logger.info(String.format("[%s] Promising ballot %d for instance %d. Sending PROMISE back to %s (highest accepted bal: %d)",
+							myProcess, balNum, inst, msg.sender, accepted));
+
 					//create new PROMISE reply msg
 					PaxosMessage promise = new PaxosMessage("PROMISE", inst, balNum, myProcess, accVal, accepted);
 					gcl.sendMsg(promise, msg.sender);
 
+				} else {
+					logger.info(String.format("[%s] REJECTED PROPOSE for instance %d with ballot %d (already promised ballot %d)",
+							myProcess, inst, balNum, currPromise));
 				}
 			}
-				break;
-			case "PROMISE":
-			{
+			break;
+			case "PROMISE": {
 				int inst = msg.instance;
 				int balNum = msg.ballotNum;
 				BallotContext ctx = activeBallots.get(inst);
@@ -177,17 +182,20 @@ public class Paxos
 							ctx.highestOtherAcceptedValue = msg.value;
 						}
 						ctx.promiseLatch.countDown();
+						logger.info(String.format("[%s] Received PROMISE for instance %d, ballot %d from %s. Total promises: %d",
+								myProcess, inst, balNum, msg.sender, (allValidProcesses.length / 2 + 1) - ctx.promiseLatch.getCount()));
 					}
 				}
 				break;
 			}
-			break;
-				break;
 			case "ACCEPT":
 			{
 				int inst = msg.instance;
 				int balNum = msg.ballotNum;
 				int currPromise = highestPromisedBallot.getOrDefault(inst, -1);
+
+				logger.info(String.format("[%s] Received ACCEPT request for instance %d, ballot %d from %s with value: %s",
+						myProcess, inst, balNum, msg.sender, msg.value));
 
 				//  check against highest promised ballot
 				if (balNum >= currPromise) {
@@ -197,13 +205,18 @@ public class Paxos
 
 					failCheck.checkFailure(myProcess, "accept_accepted");
 
+					logger.info(String.format("[%s] Accepted value for instance %d, ballot %d. Sending ACCEPTED acknowledgment to %s",
+							myProcess, inst, balNum, msg.sender));
+
 					// Reply with ACCEPTED ack back to proposer
 					PaxosMessage acceptedMsg = new PaxosMessage("ACCEPTED", inst, balNum, myProcess, msg.value, -1);
 					gcl.sendMsg(acceptedMsg, msg.sender);
+				} else {
+					logger.info(String.format("[%s] REJECTED ACCEPT for instance %d, ballot %d (promised higher ballot %d)",
+							myProcess, inst, balNum, currPromise));
 				}
 				break;
 			}
-			break;
 			case "ACCEPTED":
 			{
 				int inst = msg.instance;
@@ -213,11 +226,14 @@ public class Paxos
 				if (ctx != null && ctx.ballotNum == balNum) {
 					if (ctx.acceptedProcs.add(msg.sender)) {
 						ctx.acceptedLatch.countDown();
+						logger.info(String.format("[%s] Received ACCEPTED ack for instance %d, ballot %d from %s. Total accepts: %d",
+								myProcess, inst, balNum, msg.sender, (allValidProcesses.length / 2 + 1) - ctx.acceptedLatch.getCount()));
 					}
 				}
 				break;
 		}
 		default:
+			logger.warning(String.format("[%s] Received unknown message type: %s", myProcess, msg.type));
 			break;
 		}
 	}
@@ -234,8 +250,11 @@ public class Paxos
 		synchronized (this) {
 			instanceToRun = currInstance++;
 		}
+		logger.info(String.format("[%s] App requested broadcast for value: %s assigned to instance %d", myProcess, val, instanceToRun));
 
 		Object chosenValue = runConsensus(instanceToRun, val);
+
+		logger.info(String.format("[%s] Consensus successfully reached for instance %d with committed value: %s", myProcess, instanceToRun, chosenValue));
 
 		// Push successfully agreed-upon message to local delivery queue
 		try {
@@ -256,11 +275,16 @@ public class Paxos
 			localBallotSeq++;
 			int ballotNum = localBallotSeq * 100 + Math.abs(myProcess.hashCode() % 100);
 
+			logger.info(String.format("[%s] Starting consensus round for instance %d with generated ballot %d", myProcess, instance, ballotNum));
+
 			BallotContext ctx = new BallotContext(ballotNum, allValidProcesses.length);
 			activeBallots.put(instance, ctx);
 
 			// 1. Send PROPOSE
 			PaxosMessage proposeMsg = new PaxosMessage("PROPOSE", instance, ballotNum, myProcess, null, -1);
+			logger.info(String.format("[%s] Broadcasting PROPOSE for instance %d, ballot %d", myProcess, instance, ballotNum));
+			gcl.broadcastMsg(proposeMsg);
+
 			gcl.broadcastMsg(proposeMsg);
 
 			// Wait for majority promises with a timeout (e.g., 2000ms) to handle retries/livelocks
@@ -273,37 +297,45 @@ public class Paxos
 			}
 
 			if (!receivedPromises) {
+				logger.warning(String.format("[%s] Timeout waiting for PROMISE quorum for instance %d, ballot %d. Retrying...", myProcess, instance, ballotNum));
 				activeBallots.remove(instance);
 				continue; // Retry with a higher ballot number
 			}
 
 			failCheck.checkFailure(myProcess, "phase1_completed");
+			logger.info(String.format("[%s] Quorum of PROMISES reached for instance %d, ballot %d", myProcess, instance, ballotNum));
 
 			//2. Send ACCEPT
 			// If any acceptor returned a previously accepted value, safety dictates we adopt the value with the highest ballot
 			Object valueToAccept = proposedVal;
 			if (ctx.highestOtherAcceptedValue != null) {
 				valueToAccept = ctx.highestOtherAcceptedValue;
+				logger.info(String.format("[%s] Adopting previously accepted value from another ballot: %s", myProcess, valueToAccept));
 			}
 
 			PaxosMessage acceptMsg = new PaxosMessage("ACCEPT", instance, ballotNum, myProcess, valueToAccept, -1);
+			logger.info(String.format("[%s] Broadcasting ACCEPT for instance %d, ballot %d with value: %s", myProcess, instance, ballotNum, valueToAccept));
+
 			gcl.broadcastMsg(acceptMsg);
 
 			// Wait for majority ACCEPTED acknowledgments
 			boolean receivedAccepts = false;
 			try {
 				receivedAccepts = ctx.acceptedLatch.await(2000, TimeUnit.MILLISECONDS);
+
 			} catch (InterruptedException e) {
 				if (!running) return proposedVal;
 				Thread.currentThread().interrupt();
 			}
 
 			if (!receivedAccepts) {
+				logger.warning(String.format("[%s] Timeout waiting for ACCEPTED quorum for instance %d, ballot %d. Retrying...", myProcess, instance, ballotNum));
 				activeBallots.remove(instance);
 				continue; // Retry with a higher ballot number
 			}
 
 			failCheck.checkFailure(myProcess, "consensus_reached");
+			logger.info(String.format("[%s] Quorum of ACCEPTED acks reached for instance %d, ballot %d", myProcess, instance, ballotNum));
 			activeBallots.remove(instance);
 			return valueToAccept;
 		}
@@ -319,11 +351,14 @@ public class Paxos
 	}
 
 	public void shutdownPaxos() {
+		logger.info(String.format("[%s] Shutting down Paxos protocol layer...", myProcess));
 		running = false;
 		if (listenerThread != null) {
 			listenerThread.interrupt();
 		}
 		gcl.shutdownGCL();
+
+		logger.info(String.format("[%s] Paxos layer successfully shutdown.", myProcess));
 	}
 }
 

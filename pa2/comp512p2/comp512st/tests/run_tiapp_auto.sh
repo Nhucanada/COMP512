@@ -24,8 +24,8 @@ export autotesthost=tr-open-02.cs.mcgill.ca
 # Script automatically counts the variables to figure out the number of players.
 export process1=${autotesthost}:401$group
 export process2=${autotesthost}:402$group
-#export process3=${autotesthost}:403$group
-#export process4=${autotesthost}:404$group
+export process3=${autotesthost}:403$group
+export process4=${autotesthost}:404$group
 #export process5=${autotesthost}:405$group
 #export process6=${autotesthost}:406$group
 #export process7=${autotesthost}:407$group
