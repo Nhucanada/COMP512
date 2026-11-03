@@ -1,15 +1,18 @@
 ---
 name: submission-packager
-description: Automated submission packaging and compilation auditing skill for COMP 512. Produces clean zips without AI or build artifacts.
+description: Automated submission packaging and compilation auditing skill for COMP 512 (PA1 & PA2). Produces clean zips without AI or build artifacts.
 ---
 
 # Submission Packager Skill
 
-Packages the project into a clean zip deliverable ready for MyCourses submission.
+Packages the project into a clean zip deliverable ready for MyCourses submission, automatically stripping forbidden files (OS metadata, IDE config, build artifacts, AI logs) and verifying compilation in an isolated temporary sandbox.
 
 ## Usage
 
 ```bash
-# Package PA1 submission and run sandbox compilation audit
-python3 .agents/skills/submission-packager/scripts/package_submission.py
+# Package active milestone: PA2 (Total Order Using Paxos)
+python3 .agents/skills/submission-packager/scripts/package_submission.py --assignment PA2
+
+# Package completed milestone: PA1 (Travel Reservation System)
+python3 .agents/skills/submission-packager/scripts/package_submission.py --assignment PA1
 ```

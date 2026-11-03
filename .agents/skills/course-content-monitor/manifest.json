@@ -4,6 +4,11 @@
     "size": 75036,
     "mtime": 1790794042.8089569
   },
+  "Course Content/Project Docs/COMP512p2-GCL.pdf": {
+    "sha256": "48ab75672dc14e441ea1a21a66ad9b6bcf504bb5c084a61a1afabd9c15543772",
+    "size": 136525,
+    "mtime": 1793661854.4343355
+  },
   "Course Content/Project Docs/COMP512-p1-2026.pdf": {
     "sha256": "7ab1b5222eb9b66819a7a3d4bfd3df89d6dfd945522c696e823e970a28197c9c",
     "size": 155632,
@@ -18,6 +23,21 @@
     "sha256": "596ae2bfffd6759053b6beb934cc9330b8ca9253bbca4ef8945189fe8875d315",
     "size": 107121,
     "mtime": 1790794042.8060138
+  },
+  "Course Content/Project Docs/COMP512p2-UserGuide.pdf": {
+    "sha256": "5f73fe57d386b411cecff352771622a2fcf30c30f7745bee4016106988cdd8a4",
+    "size": 97223,
+    "mtime": 1793661854.4354799
+  },
+  "Course Content/Project Docs/COMP512-p2-2026.pdf": {
+    "sha256": "8e1904085e5b81ab208e18e4682b7d2a8ff4d68f884c2ef1fddc5582170ba5d7",
+    "size": 153401,
+    "mtime": 1793661854.4338078
+  },
+  "Course Content/Project Docs/COMP512p2-GettingStarted.pdf": {
+    "sha256": "5c064755758cda1c2267e21764e14b4a983743822506e5f06f2b708de8d83e14",
+    "size": 108840,
+    "mtime": 1793661854.4348106
   },
   "Course Content/Project Docs/AI-logging-examples/gemini_dump.pdf": {
     "sha256": "3eca21960ed0fc34f4208b2bba1e401780bb4f53ff0937eb61ae0ae35711f63d",
@@ -39,6 +59,11 @@
     "size": 806761,
     "mtime": 1790794039.0489426
   },
+  "Course Content/Slides/512-7-paxos-revised.pdf": {
+    "sha256": "aa55d10bcd0976dbabf096414e1b80101f615fb1b24c3f25d17a8d5cdc1b9397",
+    "size": 2926354,
+    "mtime": 1792181963.4116054
+  },
   "Course Content/Slides/512-4-RMI.pdf": {
     "sha256": "4e3847e7fec3ca09d971b848d46f7c3f196bf214e16a5198857543c6dd2d7a53",
     "size": 352077,
@@ -54,6 +79,16 @@
     "size": 699469,
     "mtime": 1790794039.0440817
   },
+  "Course Content/Slides/512-8-replication.pdf": {
+    "sha256": "a791063c549f7f14a58a068d9af336bbb542c40f443de4921de6f2b1ac7b988a",
+    "size": 1137162,
+    "mtime": 1792181976.8770485
+  },
+  "Course Content/Slides/512-2-point-to-point-basics - Copy.pdf": {
+    "sha256": "abf5b7f9926b918d2fdb0d64d5b3eae41d76c527620a715762fd3cf2470d4acf",
+    "size": 806761,
+    "mtime": 1792507982.6245332
+  },
   "Course Content/Slides/simplisticreliableP2Pprotocol.pdf": {
     "sha256": "263a0d18bd7ec106bd0713faaa7a1b2ef57a50d4a14676bf07f1e54775bd4a68",
     "size": 46539,
@@ -63,6 +98,11 @@
     "sha256": "1f5b8ea365acd3e3a30ce855c781b2911c34894effbbe5be69139b3f05f7eca1",
     "size": 408587,
     "mtime": 1790794039.0284
+  },
+  "Course Content/Slides/COMP512-sa1-2026.pdf": {
+    "sha256": "835fed7ee4ec9d13f620a8e1f8bd801050aee4ad2edc24c138074f4fec5354fb",
+    "size": 419605,
+    "mtime": 1792509201.6859484
   },
   "Course Content/Slides/512-6-gc.pdf": {
     "sha256": "07813e2a088d3c3a5bb34ffb22232083bd27075aee4493de116ea89d6d57f15f",
