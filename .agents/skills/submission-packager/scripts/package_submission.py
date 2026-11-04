@@ -18,12 +18,13 @@ from pathlib import Path
 
 FORBIDDEN_DIR_NAMES = {
     ".git", ".agents", ".gemini", ".claude", "target", "out", "build", "bin", "dist",
-    ".idea", ".vscode", ".settings", ".gradle", "__macosx", "__pycache__", "ai-logging-examples"
+    ".idea", ".vscode", ".settings", ".gradle", "__macosx", "__pycache__", "ai-logging-examples",
+    "logs", "p2docs"
 }
 
 FORBIDDEN_EXTENSIONS = {
-    ".iml", ".ipr", ".iws", ".pdf", ".class", ".jar", ".war", ".zip", ".tar", ".gz",
-    ".pyc", ".o", ".obj", ".docx", ".doc", ".pptx"
+    ".iml", ".ipr", ".iws", ".class", ".war", ".zip", ".tar", ".gz",
+    ".pyc", ".o", ".obj", ".docx", ".doc", ".pptx", ".log", ".tmp"
 }
 
 FORBIDDEN_NAME_KEYWORDS = [
@@ -46,8 +47,11 @@ def is_forbidden(rel_path_str):
             return True
 
     filename = parts[-1]
-    if filename.startswith(".") or filename.startswith("._") or filename == ".ds_store":
+    if filename.startswith(".") or filename.startswith("._") or filename == ".ds_store" or filename == "hosts":
         return True
+
+    if filename == "comp512p2.jar":
+        return False
 
     _, ext = os.path.splitext(filename)
     if ext in FORBIDDEN_EXTENSIONS:
@@ -148,11 +152,16 @@ def verify_sandbox(zip_path, assignment="PA1"):
         if assignment == "PA2":
             jar_file = tmp_path / "comp512p2.jar"
             comp_dir = tmp_path / "comp512st"
+            work_dir = tmp_path
+            if not jar_file.exists():
+                jar_file = tmp_path / "comp512p2" / "comp512p2.jar"
+                comp_dir = tmp_path / "comp512p2" / "comp512st"
+                work_dir = tmp_path / "comp512p2"
             if jar_file.exists() and comp_dir.exists():
                 print("  Building PA2 Java sources via javac...")
                 java_sources = [str(p) for p in comp_dir.rglob("*.java")]
-                cmd = ["javac", "-cp", f"{jar_file}:{tmp_path}"] + java_sources
-                res_pa2 = subprocess.run(cmd, cwd=str(tmp_path), capture_output=True, text=True)
+                cmd = ["javac", "-cp", f"{jar_file}:{work_dir}"] + java_sources
+                res_pa2 = subprocess.run(cmd, cwd=str(work_dir), capture_output=True, text=True)
                 if res_pa2.returncode != 0:
                     print(f"[FAIL] Sandbox PA2 compilation failed:\n{res_pa2.stderr}")
                     return False
