@@ -318,7 +318,7 @@ COMP 512/
 | **Workspace & Starter Setup** | Plumbing | — | 🟢 Completed | `pa2/` and `p2-students/` structured cleanly; relative `BASEDIR` and space-quoting fixes applied to scripts |
 | **Compilation with `comp512p2.jar`** | Plumbing | — | 🟢 Completed | `./build_tiapp.sh` compiles cleanly with zero errors |
 | **Automated Verification Harness** | Plumbing | — | 🟢 Completed | [`verify_pa2.py`](file:///Users/nathanhu/downloads/COMP%20512/.agents/skills/comp512-verifier/scripts/verify_pa2.py) verifies layout, javac, visibility, GCL IPC, and fail points |
-| **Submission Packager for PA2** | Plumbing | — | 🟢 Completed | [`package_submission.py --assignment PA2`](file:///Users/nathanhu/downloads/COMP%20512/.agents/skills/submission-packager/scripts/package_submission.py) bundles source, scripts, docs, and validates sandbox build |
+| **Submission Packager for PA2** | Plumbing | — | 🟢 Completed | [`package_submission.py --assignment PA2`](file:///Users/nathanhu/downloads/COMP%20512/.agents/skills/submission-packager/scripts/package_submission.py) generated clean deliverable [`COMP512_PA2_Submission.zip`](file:///Users/nathanhu/downloads/COMP%20512/COMP512_PA2_Submission.zip) (25 files, 1.5MB, 100% free of AI/IDE/build artifacts; sandbox verified) |
 | **Package Visibility Enforcement** | Q1 Spec | — | 🟢 Enforced | Only `Paxos.java` is public; helper classes must be package-private |
 | **GCL IPC Invariant** | Q1 Spec | — | 🟢 Enforced | All IPC restricted to GCL (`sendMsg`, `broadcastMsg`, `multicastMsg`); no RMI or raw sockets |
 | **Paxos Proposer / Acceptor Core** | Question 1 | 25 pts | 🟢 Completed | Full Paxos Phase 1 (propose/promise) & Phase 2 (accept/ack) with monotonic `localBallotSeq * 100 + myProcessId` BallotIDs |
