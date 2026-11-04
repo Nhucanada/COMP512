@@ -4,7 +4,7 @@
 # Default to $HOME/comp512/p2 if present, otherwise auto-resolve to parent directory.
 if [[ -z "$BASEDIR" || ! -d "$BASEDIR" ]]; then
 	if [[ -d "$HOME/comp512/p2" ]]; then
-		BASEDIR=$HOME/comp512/COMP512/pa2/comp512p2/comp512st
+		BASEDIR=$HOME/comp512/p2
 	else
 		BASEDIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 	fi
@@ -19,7 +19,10 @@ gameid=game-$group-99
 
 #TODO edit these entries to put the name of the server that you are using and the associated ports.
 # Remember to start the script from this host
-export autotesthost=tr-open-02.cs.mcgill.ca
+# Default autotesthost to current machine hostname, or edit to specific server
+if [[ -z "$autotesthost" ]]; then
+	export autotesthost=$(hostname)
+fi
 # player1 -> process 1, player 2 -> process 2, etc .. add more depending on how many players are playing.
 # Script automatically counts the variables to figure out the number of players.
 export process1=${autotesthost}:401$group
