@@ -15,7 +15,7 @@ import java.net.UnknownHostException;
 
 // ANY OTHER classes, etc., that you add must be private to this package and not visible to the application layer.
 
-// Wrapper to uniquely identify each proposed application value so no move is dropped or duplicated
+// Wrapper to identify each proposed value so no move is dropped or duplicated - each is unique
 class ProposalValue implements Serializable {
 	private static final long serialVersionUID = 1L;
 
@@ -197,7 +197,7 @@ public class Paxos
 		}
 	}
 
-	// Record a committed value for an instance and deliver all contiguous instances in strict total order
+	// record a committed value for this paxos instance and deliver all other processes in TO
 	private void recordCommit(int inst, Object chosenValue) {
 		synchronized (commitLock) {
 			if (!committedValues.containsKey(inst)) {
@@ -232,7 +232,7 @@ public class Paxos
 				int inst = msg.instance;
 				int balNum = msg.ballotNum;
 
-				// If this instance is already committed, immediately inform the sender via CONFIRM
+				// if this instance is already committed, immediately inform the sender via CONFIRM
 				if (committedValues.containsKey(inst)) {
 					PaxosMessage confirmMsg = new PaxosMessage("CONFIRM", inst, balNum, myProcess, committedValues.get(inst), -1);
 					gcl.sendMsg(confirmMsg, msg.sender);
@@ -296,7 +296,7 @@ public class Paxos
 					ctx.rejectedProcs.add(msg.sender);
 					this.logger.info(String.format("[%s] Received REJECT for instance %d, ballot %d from %s (promised ballot %d)",
 							myProcess, inst, balNum, msg.sender, otherHigherBal));
-					// Immediately preempt so we don't sit waiting on a 2000ms timeout
+					// immediately preempt so we don't sit waiting on a 2000ms timeout
 					ctx.abort();
 				}
 				break;
@@ -392,7 +392,7 @@ public class Paxos
 				return committedValues.get(instance);
 			}
 
-			// Jump ballot sequence past any highest promised ballot we've already seen for this instance
+			// jump ballot sequence past any highest promised ballot we've already seen for this instance
 			int highestSeen = highestPromisedBallot.getOrDefault(instance, 0);
 			localBallotSeq = Math.max(localBallotSeq + 1, (highestSeen / 100) + 1);
 			int ballotNum = localBallotSeq * 100 + myProcessId;
@@ -479,7 +479,7 @@ public class Paxos
 		return proposedVal;
 	}
 
-	// Short randomized backoff that wakes up immediately if the instance is committed by another leader
+	// 10-40ms backoff that wakes up immediately if the instance is committed by another leader, reduce collisions
 	private void backoffWait(int instance) {
 		long delayMs = 10 + rand.nextInt(30);
 		synchronized (commitLock) {
