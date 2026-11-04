@@ -32,3 +32,4 @@ build/
 *.log
 *.tmp
 pa2/performance_analysis/logs/
+pa2/comp512p2/comp512st/tests/hosts

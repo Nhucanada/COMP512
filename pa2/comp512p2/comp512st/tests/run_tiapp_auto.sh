@@ -36,7 +36,7 @@ export process4=${autotesthost}:404$group
 #export process9=${autotesthost}:409$group
 
 #TODO update these values as needed
-maxmoves=100 interval=100 randseed=93kewnkqo3n
+maxmoves=50 interval=20 randseed=93kewnkqo3n
 #TODO IF (and only if) you want to simulate failures, enable this for corresponding player numbers.
 #export failmode_N=RECEIVEPROPOSE
 #export failmode_N=AFTERSENDVOTE
@@ -87,12 +87,21 @@ export TIMONOCHROME=true
 # We do not want the island display to get constantly refreshed.
 export UPDATEDISPLAY=false
 
+# Use local hosts file if present (necessary on macOS for proper loopback hostname resolution)
+JAVA_HOSTS_OPTS=""
+if [[ -f "hosts" ]]; then
+	JAVA_HOSTS_OPTS="-Djdk.net.hosts.file=hosts"
+elif [[ "$(uname)" == "Darwin" ]]; then
+	echo "127.0.0.1 $(hostname) localhost" > hosts
+	JAVA_HOSTS_OPTS="-Djdk.net.hosts.file=hosts"
+fi
+
 playernum=1
 for process in $(echo $processgroup | sed -e 's/,/ /g')
 do
 	failmode=$(env | grep '^failmode_'${playernum}'=' | sed -e 's/.*=//')
-	echo java comp512st.tests.TreasureIslandAppAuto $process $processgroup $gameid $numplayers $playernum $maxmoves $interval $randseed$playernum $failmode '>' $gameid-$playernum-display.log
-	java comp512st.tests.TreasureIslandAppAuto $process $processgroup $gameid $numplayers $playernum $maxmoves $interval $randseed$playernum $failmode  > $gameid-$playernum-display.log 2>&1 &
+	echo java $JAVA_HOSTS_OPTS comp512st.tests.TreasureIslandAppAuto $process $processgroup $gameid $numplayers $playernum $maxmoves $interval $randseed$playernum $failmode '>' $gameid-$playernum-display.log
+	java $JAVA_HOSTS_OPTS comp512st.tests.TreasureIslandAppAuto $process $processgroup $gameid $numplayers $playernum $maxmoves $interval $randseed$playernum $failmode  > $gameid-$playernum-display.log 2>&1 &
 	playernum=$(expr $playernum + 1);
 done
 wait
