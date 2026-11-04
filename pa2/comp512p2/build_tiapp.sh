@@ -1,7 +1,13 @@
 #!/bin/bash
 
-#TODO Edit this dir name to where your comp512.jar and build_tiapp.sh script are.
-BASEDIR=$HOME/comp512/COMP512/pa2/comp512p2
+# Set this to where your code and jar file root dir is.
+if [[ -z "$BASEDIR" || ! -d "$BASEDIR" ]]; then
+	if [[ -d "$HOME/comp512/p2" ]]; then
+		BASEDIR=$HOME/comp512/p2
+	else
+		BASEDIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+	fi
+fi
 
 if [[ ! -d $BASEDIR ]]
 then
@@ -21,8 +27,8 @@ then
 	exit 1
 fi
 
-export CLASSPATH=$BASEDIR/comp512p2.jar:$BASEDIR
-cd $BASEDIR
+export CLASSPATH="$BASEDIR/comp512p2.jar:$BASEDIR"
+cd "$BASEDIR"
 
-javac $(find -L comp512st -name '*.java')
+javac -cp "$CLASSPATH" $(find -L comp512st -name '*.java')
 

@@ -23,9 +23,13 @@ from pathlib import Path
 
 WORKSPACE_ROOT = Path(__file__).resolve().parents[4]
 PA2_DIR = WORKSPACE_ROOT / "pa2"
+if (PA2_DIR / "comp512p2" / "comp512st").exists():
+    PA2_WORK_DIR = PA2_DIR / "comp512p2"
+else:
+    PA2_WORK_DIR = PA2_DIR
 P2_STUDENTS_DIR = WORKSPACE_ROOT / "p2-students"
-JAR_PATH = PA2_DIR / "comp512p2.jar"
-PAXOS_DIR = PA2_DIR / "comp512st" / "paxos"
+JAR_PATH = PA2_WORK_DIR / "comp512p2.jar" if (PA2_WORK_DIR / "comp512p2.jar").exists() else PA2_DIR / "comp512p2.jar"
+PAXOS_DIR = PA2_WORK_DIR / "comp512st" / "paxos"
 PAXOS_JAVA = PAXOS_DIR / "Paxos.java"
 
 REQUIRED_FAILURE_TYPES = [
@@ -80,14 +84,14 @@ class PA2Verifier:
         self.log("comp512p2.jar exists in pa2", JAR_PATH.exists(), f"{JAR_PATH} missing")
         self.log("Paxos.java exists", PAXOS_JAVA.exists(), f"{PAXOS_JAVA} missing")
 
-        build_script = PA2_DIR / "build_tiapp.sh"
+        build_script = PA2_WORK_DIR / "build_tiapp.sh" if (PA2_WORK_DIR / "build_tiapp.sh").exists() else PA2_DIR / "build_tiapp.sh"
         self.log("build_tiapp.sh exists and is executable", build_script.exists() and os.access(build_script, os.X_OK),
                  f"{build_script} missing or not executable")
 
-        app_java = PA2_DIR / "comp512st" / "tiapp" / "TreasureIslandApp.java"
+        app_java = PA2_WORK_DIR / "comp512st" / "tiapp" / "TreasureIslandApp.java"
         self.log("TreasureIslandApp.java exists", app_java.exists(), f"{app_java} missing")
 
-        auto_java = PA2_DIR / "comp512st" / "tests" / "TreasureIslandAppAuto.java"
+        auto_java = PA2_WORK_DIR / "comp512st" / "tests" / "TreasureIslandAppAuto.java"
         self.log("TreasureIslandAppAuto.java exists", auto_java.exists(), f"{auto_java} missing")
 
     def check_compilation(self):
@@ -98,17 +102,17 @@ class PA2Verifier:
 
         cmd = [
             "javac",
-            "-cp", f"{JAR_PATH}:{PA2_DIR}",
+            "-cp", f"{JAR_PATH}:{PA2_WORK_DIR}",
             str(PAXOS_JAVA),
-            str(PA2_DIR / "comp512st" / "tiapp" / "TreasureIslandApp.java"),
-            str(PA2_DIR / "comp512st" / "tests" / "TreasureIslandAppAuto.java")
+            str(PA2_WORK_DIR / "comp512st" / "tiapp" / "TreasureIslandApp.java"),
+            str(PA2_WORK_DIR / "comp512st" / "tests" / "TreasureIslandAppAuto.java")
         ]
         # Include any additional helper java files in paxos
         for f in PAXOS_DIR.glob("*.java"):
             if str(f) not in cmd:
                 cmd.append(str(f))
 
-        res = subprocess.run(cmd, cwd=str(PA2_DIR), capture_output=True, text=True)
+        res = subprocess.run(cmd, cwd=str(PA2_WORK_DIR), capture_output=True, text=True)
         self.log("Compile pa2 classes with javac", res.returncode == 0, res.stderr.strip() if res.stderr else "Compilation failed")
 
     def check_visibility_rules(self):
@@ -129,8 +133,10 @@ class PA2Verifier:
                 has_public_class = bool(re.search(r'public\s+class\s+Paxos\b', stripped))
                 self.log("Paxos.java declares 'public class Paxos'", has_public_class, "Paxos must be a public class")
 
-                # Check methods: ONLY allowed methods can be public
-                public_methods = re.findall(r'public\s+[\w<>\[\]]+\s+([a-zA-Z0-9_]+)\s*\(', stripped)
+                # Check methods inside public class Paxos: ONLY allowed methods can be public
+                paxos_body_start = stripped.find("public class Paxos")
+                paxos_body = stripped[paxos_body_start:] if paxos_body_start != -1 else stripped
+                public_methods = re.findall(r'public\s+[\w<>\[\]]+\s+([a-zA-Z0-9_]+)\s*\(', paxos_body)
                 for pm in public_methods:
                     if pm not in ALLOWED_PUBLIC_METHODS:
                         self.log(f"Paxos.java public method check: {pm}", False,

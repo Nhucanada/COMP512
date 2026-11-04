@@ -249,16 +249,23 @@ PA2 requires instrumenting 5 specific fail points via `failCheck.checkFailure(..
 COMP 512/
 ├── pa2/                                # Active PA2 workspace (Treasure Island & Paxos)
 │   ├── build_tiapp.sh                  # PA2 compilation script (javac with comp512p2.jar)
-│   ├── comp512p2.jar                   # Binary library (GCL & Treasure Island engine)
-│   └── comp512st/
-│       ├── paxos/
-│       │   └── Paxos.java              # Paxos consensus module (ONLY public class)
-│       ├── tiapp/
-│       │   ├── TreasureIslandApp.java  # Interactive game application
-│       │   └── run_tiapp.sh            # Manual game execution script
-│       └── tests/
-│           ├── TreasureIslandAppAuto.java # Automated stress testing harness
-│           └── run_tiapp_auto.sh       # Automated tester script with failure simulation
+│   ├── run_benchmarks.py               # Automated 24-run performance analysis benchmarking suite
+│   ├── generate_report_figures.py      # Publication figure generator (Figure 1, 2, 3 in 300 DPI PNG & PDF)
+│   ├── comp512p2/                      # Active student workspace
+│   │   ├── comp512p2.jar               # Binary library (GCL & Treasure Island engine)
+│   │   ├── build_tiapp.sh              # Build script
+│   │   └── comp512st/
+│   │       ├── paxos/
+│   │       │   └── Paxos.java          # Paxos consensus module (ONLY public class)
+│   │       ├── tiapp/
+│   │       │   └── TreasureIslandApp.java # Interactive game application
+│   │       └── tests/
+│   │           ├── TreasureIslandAppAuto.java # Automated stress testing harness
+│   │           └── run_tiapp_auto.sh   # Automated tester script
+│   └── performance_analysis/           # Empirical benchmark evaluation outputs
+│       ├── PERFORMANCE_REPORT.md       # Comprehensive 2-page empirical report
+│       ├── data/                       # Raw benchmark JSON & summary CSV table
+│       └── figures/                    # 300 DPI publication figures (Figure 1, 2, 3)
 ├── p2-students/                        # Pristine PA2 starter distribution & docs
 │   ├── comp512p2/                      # Starter code directory
 │   ├── comp512p2.tar.gz                # Starter code tarball
@@ -314,11 +321,11 @@ COMP 512/
 | **Submission Packager for PA2** | Plumbing | — | 🟢 Completed | [`package_submission.py --assignment PA2`](file:///Users/nathanhu/downloads/COMP%20512/.agents/skills/submission-packager/scripts/package_submission.py) bundles source, scripts, docs, and validates sandbox build |
 | **Package Visibility Enforcement** | Q1 Spec | — | 🟢 Enforced | Only `Paxos.java` is public; helper classes must be package-private |
 | **GCL IPC Invariant** | Q1 Spec | — | 🟢 Enforced | All IPC restricted to GCL (`sendMsg`, `broadcastMsg`, `multicastMsg`); no RMI or raw sockets |
-| **Paxos Proposer / Acceptor Core** | Question 1 | 25 pts | 🟡 Starter | Needs full Paxos Phase 1 (propose/promise) & Phase 2 (accept/ack) with monotonic BallotIDs |
-| **Total Order Delivery & Buffering** | Question 1 | 20 pts | 🟡 Starter | `acceptTOMsg()` must buffer out-of-order turns and deliver strictly sequentially |
-| **No-Drop Move Persistence** | Question 1 | 10 pts | 🟡 Planned | Failed proposals at turn $k$ must automatically carry forward to turn $k+1$ |
-| **Failure Points Instrumentation** | Question 1 | 10 pts | 🟡 Instrumented | Need hooks for `RECEIVEPROPOSE`, `AFTERSENDVOTE`, `AFTERSENDPROPOSE`, `AFTERBECOMINGLEADER`, `AFTERVALUEACCEPT` |
-| **Empirical Performance Study** | Question 2 | 25 pts | 🟡 Planned | Parameter sweeps with `TreasureIslandAppAuto` across intervals ($100\text{ms} \to 0\text{ms}$) & players (1–9) |
+| **Paxos Proposer / Acceptor Core** | Question 1 | 25 pts | 🟢 Completed | Full Paxos Phase 1 (propose/promise) & Phase 2 (accept/ack) with monotonic `localBallotSeq * 100 + myProcessId` BallotIDs |
+| **Total Order Delivery & Buffering** | Question 1 | 20 pts | 🟢 Completed | `acceptTOMsg()` sequential queue delivery via `LinkedBlockingQueue` with contiguous turn ordering |
+| **No-Drop Move Persistence** | Question 1 | 10 pts | 🟢 Completed | `ProposalValue` sequence tracking across consecutive instances ensures superseded moves automatically retry |
+| **Failure Points Instrumentation** | Question 1 | 10 pts | 🟢 Completed | All 5 fail points instrumented (`RECEIVEPROPOSE`, `AFTERSENDVOTE`, `AFTERSENDPROPOSE`, `AFTERBECOMINGLEADER`, `AFTERVALUEACCEPT`) and verified |
+| **Empirical Performance Study** | Question 2 | 25 pts | 🟢 Completed | Automated harness `run_benchmarks.py` executed across 24 configurations ($N \in [3, 5, 7, 9]$, intervals $[100, 50, 20, 10, 5, 0]\text{ms}$); 100% total order agreement verified; publication figures and `PERFORMANCE_REPORT.md` generated |
 | **Project Description Report** | Question 3 | 5 pts | 🟡 Planned | Max 2 pages text, mandatory No-AI declaration, 4 key design questions answered, collaboration log |
 | **Live TA Demonstration** | Question 3 | 5 pts | 🟡 Planned | Live execution on SOCS Unix nodes, fault-injection demo, architecture Q&A defense |
 
